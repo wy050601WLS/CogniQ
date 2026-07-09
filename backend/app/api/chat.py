@@ -19,8 +19,6 @@ from app.services.chat_service import ChatService
 from app.utils.helpers import get_or_404
 
 logger = logging.getLogger(__name__)
-
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

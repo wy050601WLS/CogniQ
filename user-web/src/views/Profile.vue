@@ -83,8 +83,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { uploadAvatar } from '../api/auth'
-import api from '../api'
+import { uploadAvatar, updateProfile, changePassword } from '../api/auth'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -153,7 +152,6 @@ async function handleAvatarChange(file) {
     const { data } = await uploadAvatar(rawFile)
     // 更新 store 中的用户信息
     authStore.user.avatar = data.avatar_url
-    localStorage.setItem('user', JSON.stringify(authStore.user))
     ElMessage.success('头像上传成功')
   } catch (e) {
     ElMessage.error('头像上传失败')
@@ -171,7 +169,7 @@ async function handleSaveProfile() {
 
   saving.value = true
   try {
-    await api.put('/auth/me', profileForm.value)
+    await updateProfile(profileForm.value)
     await authStore.fetchUser()
     ElMessage.success('保存成功')
   } catch (e) {
@@ -190,7 +188,7 @@ async function handleChangePassword() {
 
   changingPassword.value = true
   try {
-    await api.put('/auth/password', {
+    await changePassword({
       old_password: passwordForm.value.oldPassword,
       new_password: passwordForm.value.newPassword
     })

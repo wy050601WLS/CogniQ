@@ -52,5 +52,13 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    def model_post_init(self, __context) -> None:
+        """模型初始化后检查"""
+        # 生产环境强制要求设置 JWT 密钥
+        import os
+        if os.environ.get("ENVIRONMENT") == "production":
+            if self.JWT_SECRET_KEY == "knowledge-qa-secret-key-change-in-production":
+                raise ValueError("生产环境必须设置安全的 JWT_SECRET_KEY")
+
 
 settings = Settings()

@@ -35,15 +35,31 @@ router = APIRouter()
 _login_attempts: dict[str, tuple[int, float]] = {}
 _MAX_LOGIN_ATTEMPTS = 10
 _WINDOW_SECONDS = 300  # 5分钟窗口
+_last_cleanup = time.time()
+_CLEANUP_INTERVAL = 60  # 每60秒清理一次过期条目
+
+
+def _cleanup_expired():
+    """清理过期的频率限制条目"""
+    global _last_cleanup
+    now = time.time()
+    if now - _last_cleanup < _CLEANUP_INTERVAL:
+        return
+    _last_cleanup = now
+    expired_keys = [k for k, (_, t) in _login_attempts.items() if now - t > _WINDOW_SECONDS]
+    for k in expired_keys:
+        del _login_attempts[k]
 
 
 def _check_rate_limit(key: str) -> bool:
     """检查是否超过频率限制，返回 True 表示允许"""
+    _cleanup_expired()
     now = time.time()
     if key in _login_attempts:
         count, first_time = _login_attempts[key]
         if now - first_time > _WINDOW_SECONDS:
-            # 窗口过期，重置
+            # 窗口过期，删除旧条目并创建新条目
+            del _login_attempts[key]
             _login_attempts[key] = (1, now)
             return True
         if count >= _MAX_LOGIN_ATTEMPTS:

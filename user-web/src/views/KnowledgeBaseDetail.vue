@@ -105,12 +105,10 @@
     <!-- 上传文档对话框 -->
     <el-dialog v-model="showUploadDialog" title="上传文档" width="500px" :close-on-click-modal="false">
       <el-upload
-        ref="uploadRef"
         class="upload-area"
         drag
         :auto-upload="false"
         :on-change="handleFileChange"
-        :before-upload="beforeUpload"
         accept=".pdf,.docx,.doc,.md,.txt,.html,.htm"
       >
         <el-icon class="el-icon--upload"><Upload /></el-icon>
