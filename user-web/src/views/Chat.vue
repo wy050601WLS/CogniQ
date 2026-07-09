@@ -188,7 +188,7 @@ onMounted(async () => {
     
     // 优先使用 kbId 查询参数选中知识库
     const kbId = route.query.kbId
-    if (kbId && knowledgeBases.value.some(kb => kb.id === kbId)) {
+    if (kbId && knowledgeBases.value.some(kb => String(kb.id) === String(kbId))) {
       selectedKB.value = kbId
     } else if (knowledgeBases.value.length > 0) {
       selectedKB.value = knowledgeBases.value[0].id
@@ -317,7 +317,19 @@ async function sendMessage() {
     )
   } catch (e) {
     console.error('聊天失败:', e)
-    ElMessage.error('发送消息失败，请重试')
+    // 如果已接收到部分内容，保留为助手消息
+    if (streamingText.value) {
+      messages.value.push({
+        id: `partial_${Date.now()}`,
+        role: 'assistant',
+        content: streamingText.value + '\n\n*[传输中断，以上为部分回答]*',
+        sources: streamingSources.value,
+        isTemp: true
+      })
+      ElMessage.warning('传输中断，已保留部分回答')
+    } else {
+      ElMessage.error('发送消息失败，请重试')
+    }
     streaming.value = false
     streamingText.value = ''
     streamingSources.value = []

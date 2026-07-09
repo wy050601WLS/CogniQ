@@ -5,7 +5,8 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.exceptions import PermissionDeniedError
+from app.exceptions import PermissionDeniedError, NotFoundError
+from app.models.knowledge_base import KnowledgeBase
 from app.models.conversation import Conversation, Message
 from app.schemas.chat import ChatRequest, ConversationCreate, ConversationResponse
 from app.services.chat import rag_chat
@@ -33,6 +34,14 @@ class ChatService:
         db: AsyncSession, data: ConversationCreate, user_id: str
     ) -> Conversation:
         """创建对话"""
+        # 验证知识库是否存在
+        kb_result = await db.execute(
+            select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
+        )
+        kb = kb_result.scalar_one_or_none()
+        if not kb:
+            raise NotFoundError("知识库", data.knowledge_base_id)
+
         conv = Conversation(
             user_id=user_id,
             knowledge_base_id=data.knowledge_base_id,
@@ -88,6 +97,14 @@ class ChatService:
                 conv_title = conv.title
                 conv_user_id = conv.user_id
             else:
+                # 验证知识库是否存在
+                kb_result = await session.execute(
+                    select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
+                )
+                kb = kb_result.scalar_one_or_none()
+                if not kb:
+                    raise NotFoundError("知识库", data.knowledge_base_id)
+
                 conv = Conversation(
                     user_id=user_id,
                     knowledge_base_id=data.knowledge_base_id,
@@ -187,6 +204,14 @@ class ChatService:
             if conv.user_id != user_id:
                 raise PermissionDeniedError("无权访问此对话")
         else:
+            # 验证知识库是否存在
+            kb_result = await db.execute(
+                select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
+            )
+            kb = kb_result.scalar_one_or_none()
+            if not kb:
+                raise NotFoundError("知识库", data.knowledge_base_id)
+
             conv = Conversation(
                 user_id=user_id,
                 knowledge_base_id=data.knowledge_base_id,
