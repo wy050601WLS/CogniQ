@@ -366,7 +366,7 @@ async function handleExport(format) {
 
   try {
     const token = localStorage.getItem('token')
-    const response = await fetch(`/api/conversations/${currentConvId.value}/export?format=${format}`, {
+    const response = await fetch(`/api/conversations/${currentConvId.value}/export?export_format=${format}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

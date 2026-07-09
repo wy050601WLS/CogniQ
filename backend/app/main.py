@@ -26,6 +26,8 @@ logger = logging.getLogger("app")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
+    import os
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     logger.info("正在启动知识问答系统...")
     await init_db()
     logger.info("数据库初始化完成")
@@ -73,8 +75,6 @@ app.add_middleware(
 app.include_router(api_router)
 
 # 挂载上传文件静态目录
-import os
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/api/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 

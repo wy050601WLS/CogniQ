@@ -62,7 +62,7 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  if (to.path === '/login' && authStore.isLoggedIn) {
+  if (to.path === '/login' && authStore.isLoggedIn && authStore.isAdmin) {
     next('/dashboard')
     return
   }

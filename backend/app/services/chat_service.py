@@ -146,11 +146,19 @@ class ChatService:
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id, 'message_id': message_id})}\n\n"
 
         # RAG 问答（带对话历史）
+        # 使用对话实际关联的知识库 ID，而非前端传入的 ID
+        kb_id_for_rag = data.knowledge_base_id
+        if data.conversation_id:
+            kb_result = await session.execute(
+                select(Conversation.knowledge_base_id).where(Conversation.id == conv_id)
+            )
+            kb_id_for_rag = kb_result.scalar_one()
+
         full_response = ""
         all_sources = []
         rag_error = False
         try:
-            async for chunk, sources in rag_chat(data.knowledge_base_id, data.message, history):
+            async for chunk, sources in rag_chat(kb_id_for_rag, data.message, history):
                 full_response += chunk
                 all_sources = sources
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
@@ -245,11 +253,19 @@ class ChatService:
             history = [{"role": msg.role, "content": msg.content} for msg in history_messages]
 
         # RAG 问答（带对话历史）
+        # 使用对话实际关联的知识库 ID，而非前端传入的 ID
+        kb_id_for_rag = data.knowledge_base_id
+        if data.conversation_id:
+            kb_result = await db.execute(
+                select(Conversation.knowledge_base_id).where(Conversation.id == conv.id)
+            )
+            kb_id_for_rag = kb_result.scalar_one()
+
         full_response = ""
         all_sources = []
         rag_error = False
         try:
-            async for chunk, sources in rag_chat(data.knowledge_base_id, data.message, history):
+            async for chunk, sources in rag_chat(kb_id_for_rag, data.message, history):
                 full_response += chunk
                 all_sources = sources
         except Exception as e:

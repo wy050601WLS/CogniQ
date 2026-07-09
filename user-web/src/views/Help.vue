@@ -38,7 +38,7 @@
         v-for="category in categories"
         :key="category.id"
         class="category-card"
-        @click="selectedCategory = category.id"
+        @click="selectCategory(category.id)"
       >
         <el-icon :size="32">
           <component :is="category.icon" />
@@ -64,7 +64,7 @@
           @click="showDetail(item)"
         >
           <h3>{{ item.title }}</h3>
-          <p>{{ item.content.substring(0, 100).replace(/[#*\n]/g, ' ').trim() }}...</p>
+          <p>{{ (item.content || '').substring(0, 100).replace(/[#*\n]/g, ' ').trim() }}...</p>
           <div class="item-tags">
             <el-tag v-for="tag in item.tags" :key="tag" size="small">{{ tag }}</el-tag>
           </div>
@@ -109,6 +109,19 @@ const categoryData = ref({})
 const currentCategory = computed(() => {
   return categoryData.value[selectedCategory.value] || null
 })
+
+async function selectCategory(categoryId) {
+  selectedCategory.value = categoryId
+  // 如果还没有加载过该分类的数据，则加载
+  if (!categoryData.value[categoryId]) {
+    try {
+      const { data } = await api.get(`/help/${categoryId}`)
+      categoryData.value = { ...categoryData.value, [categoryId]: data }
+    } catch (e) {
+      console.error('加载分类详情失败:', e)
+    }
+  }
+}
 
 onMounted(async () => {
   try {

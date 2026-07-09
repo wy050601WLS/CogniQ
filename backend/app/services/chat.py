@@ -145,7 +145,9 @@ async def rag_chat(kb_id: str, question: str, history: list[dict] = None):
     except (ValueError, AttributeError):
         similarity_threshold = 0.3
 
-    results = vector_store.query(kb_id, question, n_results=5)
+    # 使用线程池避免同步 ChromaDB 查询阻塞事件循环
+    import asyncio
+    results = await asyncio.to_thread(vector_store.query, kb_id, question, 5)
 
     sources = []
     context_parts = []

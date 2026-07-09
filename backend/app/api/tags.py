@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
 from app.core.database import get_db
@@ -22,12 +22,11 @@ class TagCreate(BaseModel):
 
 
 class TagResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     color: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 @router.get("", response_model=list[TagResponse], summary="获取所有标签")
