@@ -179,8 +179,7 @@ async function handleSearch() {
 function handleSearchResult(kb) {
   searchResults.value = []
   globalSearch.value = ''
-  const token = localStorage.getItem('token')
-  if (token) {
+  if (authStore.isLoggedIn) {
     router.push(`/kb/${kb.id}`)
   } else {
     router.push('/login')

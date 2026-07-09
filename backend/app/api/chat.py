@@ -129,7 +129,7 @@ async def delete_conversation(
 @router.get("/conversations/{conv_id}/export", summary="导出对话")
 async def export_conversation(
     conv_id: str,
-    format: Literal["markdown", "txt"] = "markdown",
+    export_format: Literal["markdown", "txt"] = "markdown",
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -148,7 +148,7 @@ async def export_conversation(
     messages = result.scalars().all()
 
     # 生成内容
-    if format == "markdown":
+    if export_format == "markdown":
         content = generate_markdown(conv.title, messages)
         media_type = "text/markdown"
         ext = "md"

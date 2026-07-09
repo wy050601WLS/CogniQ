@@ -4,6 +4,15 @@ from typing import Optional
 from datetime import datetime
 
 
+class TagResponse(BaseModel):
+    """标签响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str = Field(..., description="标签ID")
+    name: str = Field(..., description="标签名称")
+    color: Optional[str] = Field(None, description="标签颜色")
+
+
 class KnowledgeBaseCreate(BaseModel):
     """创建知识库请求"""
     name: str = Field(
@@ -67,7 +76,7 @@ class KnowledgeBaseResponse(BaseModel):
     chunk_size: int = Field(..., description="分块大小")
     chunk_overlap: int = Field(..., description="分块重叠")
     doc_count: int = Field(..., description="文档数量")
-    tags: list = Field(default_factory=list, description="标签列表")
+    tags: list[TagResponse] = Field(default_factory=list, description="标签列表")
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
 

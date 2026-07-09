@@ -106,8 +106,10 @@ async function handleCopy(kb) {
   try {
     await copyKnowledgeBase(kb.id)
     ElMessage.success(`已复制「${kb.name}」`)
-    // 更新复制次数
-    kb.copy_count = (kb.copy_count || 0) + 1
+    // 更新复制次数（创建新数组触发响应式更新）
+    knowledgeBases.value = knowledgeBases.value.map(item =>
+      item.id === kb.id ? { ...item, copy_count: (item.copy_count || 0) + 1 } : item
+    )
   } catch (e) {
     ElMessage.error('复制失败，请重试')
   } finally {

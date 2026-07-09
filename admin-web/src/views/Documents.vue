@@ -34,7 +34,7 @@
         <el-table-column prop="filename" label="文件名">
           <template #default="{ row }">
             <div class="file-name">
-              <el-icon class="file-icon" :class=" getFileTypeClass(row.file_type)">
+              <el-icon class="file-icon" :class="getFileTypeClass(row.file_type)">
                 <Document />
               </el-icon>
               <div>

@@ -65,7 +65,7 @@
           <div class="welcome-icon">💬</div>
           <h2>开始智能问答</h2>
           <p>选择知识库，输入问题，AI 为您精准解答</p>
-          <div class="quick-questions">
+          <div class="quick-questions" v-if="selectedKB">
             <div class="quick-item" v-for="q in quickQuestions" :key="q" @click="askQuick(q)">{{ q }}</div>
           </div>
         </div>

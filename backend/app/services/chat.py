@@ -150,7 +150,7 @@ async def rag_chat(kb_id: str, question: str, history: list[dict] = None):
     sources = []
     context_parts = []
     for i, doc in enumerate(results):
-        if doc["score"] > similarity_threshold:
+        if doc["score"] >= similarity_threshold:
             context_parts.append(f"[来源{i+1}] {doc['content']}")
             sources.append({
                 "doc_id": doc["metadata"].get("doc_id", ""),

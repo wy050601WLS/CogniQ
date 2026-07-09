@@ -56,7 +56,7 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth) {
     if (!authStore.isLoggedIn || !authStore.isAdmin) {
-      authStore.logout()
+      // 仅重定向到登录页，不强制登出
       next('/login')
       return
     }
