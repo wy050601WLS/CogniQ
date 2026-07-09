@@ -1,5 +1,7 @@
 """聊天服务 - RAG 问答链"""
 import re
+import asyncio
+from app.config import settings
 from app.services.vector_store import get_vector_store
 from app.services.llm import get_llm_service
 
@@ -140,13 +142,11 @@ async def rag_chat(kb_id: str, question: str, history: list[dict] = None):
 
     # 检索相关文档（相似度阈值从设置读取，默认 0.3）
     try:
-        from app.config import settings
         similarity_threshold = float(getattr(settings, "SIMILARITY_THRESHOLD", "0.3"))
     except (ValueError, AttributeError):
         similarity_threshold = 0.3
 
     # 使用线程池避免同步 ChromaDB 查询阻塞事件循环
-    import asyncio
     results = await asyncio.to_thread(vector_store.query, kb_id, question, 5)
 
     sources = []

@@ -200,8 +200,8 @@ def generate_markdown(title: str, messages: list) -> str:
             lines.append("**参考来源:**")
             for i, source in enumerate(msg.sources):
                 if isinstance(source, dict):
-                    content = source.get("content", "")[:100]
-                    lines.append(f"{i+1}. {content}...")
+                    source_content = source.get("content", "")[:100]
+                    lines.append(f"{i+1}. {source_content}...")
             lines.append("")
 
         lines.append("---")

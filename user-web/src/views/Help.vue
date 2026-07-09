@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Setting, Collection, ChatDotRound, Star, User,
@@ -150,6 +150,10 @@ const currentCategory = computed(() => {
 })
 
 let searchTimer = null
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
 
 function handleSearchInput() {
   if (searchTimer) clearTimeout(searchTimer)
