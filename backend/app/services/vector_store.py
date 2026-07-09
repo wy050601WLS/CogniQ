@@ -1,5 +1,6 @@
 """向量存储服务 - Chroma"""
 import logging
+import threading
 import chromadb
 from app.config import settings
 
@@ -81,11 +82,14 @@ class VectorStoreService:
 
 
 _vector_store = None
+_vector_store_lock = threading.Lock()
 
 
 def get_vector_store() -> VectorStoreService:
-    """获取向量存储服务单例"""
+    """获取向量存储服务单例（线程安全）"""
     global _vector_store
     if _vector_store is None:
-        _vector_store = VectorStoreService()
+        with _vector_store_lock:
+            if _vector_store is None:
+                _vector_store = VectorStoreService()
     return _vector_store
