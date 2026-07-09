@@ -1,7 +1,8 @@
 """知识问答系统 - FastAPI 应用入口"""
+import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,6 +22,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("app")
+
+# 环境判断
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 
 @asynccontextmanager
@@ -106,13 +110,37 @@ async def root():
 
 @app.get("/health", tags=["系统"])
 async def health():
-    """健康检查"""
-    return {"status": "ok"}
+    """健康检查（包含依赖服务状态）"""
+    checks = {"status": "ok", "services": {}}
+
+    # 检查数据库连接
+    try:
+        from app.core.database import engine
+        async with engine.connect() as conn:
+            await conn.execute("SELECT 1")
+        checks["services"]["database"] = "ok"
+    except Exception as e:
+        checks["services"]["database"] = f"error: {type(e).__name__}"
+        checks["status"] = "degraded"
+
+    # 检查向量存储
+    try:
+        from app.services.vector_store import get_vector_store
+        vs = get_vector_store()
+        vs.client.heartbeat()
+        checks["services"]["vector_store"] = "ok"
+    except Exception as e:
+        checks["services"]["vector_store"] = f"error: {type(e).__name__}"
+        checks["status"] = "degraded"
+
+    return checks
 
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui():
-    """自定义 Swagger UI"""
+    """自定义 Swagger UI（生产环境禁用）"""
+    if ENVIRONMENT == "production":
+        return JSONResponse(status_code=404, content={"error": "Not found"})
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
         title="知识问答系统 API 文档",

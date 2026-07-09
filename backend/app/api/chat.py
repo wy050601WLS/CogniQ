@@ -77,11 +77,14 @@ async def search_conversations(
 
 @router.get("/conversations", response_model=list[ConversationResponse], summary="获取对话列表")
 async def list_conversations(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取当前用户的对话列表"""
-    return await ChatService.list_conversations(db, current_user.id)
+    items, total = await ChatService.list_conversations(db, current_user.id, page, page_size)
+    return items
 
 
 @router.post(

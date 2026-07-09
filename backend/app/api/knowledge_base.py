@@ -1,6 +1,6 @@
 """知识库 API"""
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -22,19 +22,25 @@ router = APIRouter()
 
 @router.get("/my", response_model=KnowledgeBaseListResponse, summary="我的知识库")
 async def list_my_knowledge_bases(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取当前用户的知识库列表"""
-    items = await KnowledgeBaseService.list_by_owner(db, current_user.id)
-    return KnowledgeBaseListResponse(items=items, total=len(items))
+    items, total = await KnowledgeBaseService.list_by_owner(db, current_user.id, page, page_size)
+    return KnowledgeBaseListResponse(items=items, total=total)
 
 
 @router.get("/marketplace", response_model=KnowledgeBaseMarketplaceResponse, summary="知识库广场")
-async def list_marketplace(db: AsyncSession = Depends(get_db)):
+async def list_marketplace(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    db: AsyncSession = Depends(get_db),
+):
     """获取公开知识库列表"""
-    items = await KnowledgeBaseService.list_public(db)
-    return KnowledgeBaseMarketplaceResponse(items=items, total=len(items))
+    items, total = await KnowledgeBaseService.list_public(db, page, page_size)
+    return KnowledgeBaseMarketplaceResponse(items=items, total=total)
 
 
 @router.post("", response_model=KnowledgeBaseResponse, status_code=201, summary="创建知识库")

@@ -20,14 +20,25 @@ class ChatService:
     """聊天业务逻辑"""
 
     @staticmethod
-    async def list_conversations(db: AsyncSession, user_id: str) -> list[Conversation]:
-        """获取用户的所有对话"""
+    async def list_conversations(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 20) -> tuple[list[Conversation], int]:
+        """获取用户的所有对话（分页）"""
+        # 获取总数
+        from sqlalchemy import func
+        count_result = await db.execute(
+            select(func.count(Conversation.id)).where(Conversation.user_id == user_id)
+        )
+        total = count_result.scalar() or 0
+
+        # 获取分页数据
+        offset = (page - 1) * page_size
         result = await db.execute(
             select(Conversation)
             .where(Conversation.user_id == user_id)
             .order_by(Conversation.updated_at.desc())
+            .offset(offset)
+            .limit(page_size)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     @staticmethod
     async def create_conversation(

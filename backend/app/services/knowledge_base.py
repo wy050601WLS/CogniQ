@@ -19,18 +19,43 @@ class KnowledgeBaseService:
     """知识库业务逻辑"""
 
     @staticmethod
-    async def list_by_owner(db: AsyncSession, owner_id: str) -> list[KnowledgeBase]:
-        """获取用户的知识库"""
+    async def list_by_owner(db: AsyncSession, owner_id: str, page: int = 1, page_size: int = 20) -> tuple[list[KnowledgeBase], int]:
+        """获取用户的知识库（分页）"""
+        # 获取总数
+        from sqlalchemy import func
+        count_result = await db.execute(
+            select(func.count(KnowledgeBase.id)).where(KnowledgeBase.owner_id == owner_id)
+        )
+        total = count_result.scalar() or 0
+
+        # 获取分页数据
+        offset = (page - 1) * page_size
         result = await db.execute(
             select(KnowledgeBase)
             .where(KnowledgeBase.owner_id == owner_id)
             .order_by(KnowledgeBase.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     @staticmethod
-    async def list_public(db: AsyncSession) -> list[KnowledgeBase]:
-        """获取公开知识库（广场），排除禁用用户的知识库"""
+    async def list_public(db: AsyncSession, page: int = 1, page_size: int = 20) -> tuple[list[KnowledgeBase], int]:
+        """获取公开知识库（广场），排除禁用用户的知识库（分页）"""
+        # 获取总数
+        from sqlalchemy import func
+        count_result = await db.execute(
+            select(func.count(KnowledgeBase.id))
+            .join(User, KnowledgeBase.owner_id == User.id)
+            .where(
+                ((KnowledgeBase.is_public == True) | (KnowledgeBase.is_official == True))
+                & (User.status == "active")
+            )
+        )
+        total = count_result.scalar() or 0
+
+        # 获取分页数据
+        offset = (page - 1) * page_size
         result = await db.execute(
             select(KnowledgeBase)
             .join(User, KnowledgeBase.owner_id == User.id)
@@ -39,8 +64,10 @@ class KnowledgeBaseService:
                 & (User.status == "active")
             )
             .order_by(KnowledgeBase.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     @staticmethod
     async def create(db: AsyncSession, data: KnowledgeBaseCreate, user: User) -> KnowledgeBase:

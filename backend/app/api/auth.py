@@ -102,8 +102,14 @@ def _cleanup_blacklist():
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201, summary="用户注册")
-async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """用户注册"""
+async def register(data: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """用户注册（带频率限制）"""
+    # 频率限制：基于 IP
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"register:{client_ip}"
+    if not _check_rate_limit(rate_key):
+        raise ValidationError("注册尝试过于频繁，请稍后重试")
+
     # 检查用户名
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
@@ -280,7 +286,7 @@ async def upload_avatar(
     os.makedirs(avatar_dir, exist_ok=True)
 
     ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
-    filename = f"{current_user.id}_{int(time.time())}.{ext}"
+    filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
     file_path = os.path.join(avatar_dir, filename)
 
     with open(file_path, "wb") as f:
