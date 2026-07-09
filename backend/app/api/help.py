@@ -8,9 +8,9 @@ router = APIRouter()
 
 @router.get("/help", summary="获取帮助内容列表")
 async def get_help_categories():
-    """获取所有帮助分类"""
+    """获取所有帮助分类（含条目数量）"""
     return [
-        {"id": cat["id"], "title": cat["title"], "icon": cat["icon"]}
+        {"id": cat["id"], "title": cat["title"], "icon": cat["icon"], "count": len(cat.get("items", []))}
         for cat in HELP_CATEGORIES
     ]
 
@@ -23,15 +23,32 @@ async def search_help(q: str = Query(..., min_length=1)):
 
     for cat in HELP_CATEGORIES:
         for item in cat["items"]:
-            # 搜索标题和标签
+            # 搜索标题、内容和标签（标签也转小写比较）
             if (query in item["title"].lower() or
                 query in item.get("content", "").lower() or
-                any(query in tag for tag in item.get("tags", []))):
+                any(query in tag.lower() for tag in item.get("tags", []))):
+                # 生成内容摘要（截取匹配位置前后的内容）
+                content = item.get("content", "")
+                snippet = ""
+                content_lower = content.lower()
+                pos = content_lower.find(query)
+                if pos >= 0:
+                    start = max(0, pos - 40)
+                    end = min(len(content), pos + 60)
+                    snippet = content[start:end].strip()
+                    if start > 0:
+                        snippet = "..." + snippet
+                    if end < len(content):
+                        snippet = snippet + "..."
+                else:
+                    snippet = content[:100].strip() + "..." if content else ""
+
                 results.append({
                     "category": cat["title"],
                     "id": item["id"],
                     "title": item["title"],
-                    "tags": item.get("tags", [])
+                    "tags": item.get("tags", []),
+                    "snippet": snippet,
                 })
 
     return {"results": results, "total": len(results)}
