@@ -7,6 +7,8 @@ from app.models.conversation import Conversation, Message
 from app.models.setting import Setting
 from app.models.feedback import Feedback
 from app.models.favorite import Favorite
+from app.models.tag import Tag
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Base",
@@ -18,4 +20,6 @@ __all__ = [
     "Setting",
     "Feedback",
     "Favorite",
+    "Tag",
+    "AuditLog",
 ]

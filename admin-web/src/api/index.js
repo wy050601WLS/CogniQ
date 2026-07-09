@@ -32,14 +32,6 @@ api.interceptors.response.use(
       // 清除所有认证状态
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
-      // 尝试使用 store 清除（如果已初始化）
-      try {
-        const { useAdminAuthStore } = require('../stores/auth')
-        const authStore = useAdminAuthStore()
-        authStore.logout()
-      } catch {
-        // store 未初始化，仅清除 localStorage
-      }
       window.location.href = '/login'
       return Promise.reject(error)
     }

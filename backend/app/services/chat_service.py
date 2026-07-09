@@ -222,30 +222,37 @@ class ChatService:
         # RAG 问答（带对话历史）
         full_response = ""
         all_sources = []
-        async for chunk, sources in rag_chat(data.knowledge_base_id, data.message, history):
-            full_response += chunk
-            all_sources = sources
+        rag_error = False
+        try:
+            async for chunk, sources in rag_chat(data.knowledge_base_id, data.message, history):
+                full_response += chunk
+                all_sources = sources
+        except Exception as e:
+            logger.error(f"RAG 问答失败: {e}")
+            full_response = "抱歉，处理您的问题时出现错误，请稍后重试"
+            rag_error = True
 
-        # 保存助手消息
+        # 仅在 RAG 成功时保存助手消息
         message_id = str(uuid.uuid4())
-        assistant_msg = Message(
-            id=message_id,
-            conversation_id=conv.id,
-            role="assistant",
-            content=full_response,
-            sources=all_sources if all_sources else None,
-        )
-        db.add(assistant_msg)
+        if not rag_error:
+            assistant_msg = Message(
+                id=message_id,
+                conversation_id=conv.id,
+                role="assistant",
+                content=full_response,
+                sources=all_sources if all_sources else None,
+            )
+            db.add(assistant_msg)
 
-        # 更新对话标题
-        if conv.title in ("新对话", data.message[:50]):
-            conv.title = data.message[:100]
+            # 更新对话标题
+            if conv.title in ("新对话", data.message[:50]):
+                conv.title = data.message[:100]
 
-        await db.commit()
+            await db.commit()
 
         return {
             "conversation_id": conv.id,
             "message_id": message_id,
             "content": full_response,
-            "sources": all_sources,
+            "sources": all_sources if not rag_error else [],
         }
