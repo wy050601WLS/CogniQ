@@ -35,7 +35,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """创建 Access Token"""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire, "type": "access"})
+    jti = secrets.token_hex(16)
+    to_encode.update({"exp": expire, "type": "access", "jti": jti})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -43,7 +44,8 @@ def create_refresh_token(data: dict) -> str:
     """创建 Refresh Token"""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    jti = secrets.token_hex(16)
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 

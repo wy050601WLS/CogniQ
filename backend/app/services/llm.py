@@ -1,8 +1,11 @@
 """LLM 服务 - Ollama"""
 import asyncio
+import logging
 from typing import AsyncGenerator
 import ollama
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # LLM 调用超时时间（秒）
 LLM_TIMEOUT_SECONDS = 120
@@ -32,7 +35,8 @@ class LLMService:
         except asyncio.TimeoutError:
             yield "抱歉，AI 模型响应超时，请稍后重试"
         except Exception as e:
-            yield f"抱歉，AI 模型调用失败：{type(e).__name__}"
+            logger.error(f"LLM 流式调用失败: {type(e).__name__}: {e}")
+            yield "抱歉，AI 模型调用失败，请稍后重试"
 
     async def chat(self, prompt: str, model: str = None) -> str:
         """非流式聊天（异步，带超时控制）"""
@@ -49,7 +53,8 @@ class LLMService:
         except asyncio.TimeoutError:
             return "抱歉，AI 模型响应超时，请稍后重试"
         except Exception as e:
-            return f"抱歉，AI 模型调用失败：{type(e).__name__}"
+            logger.error(f"LLM 调用失败: {type(e).__name__}: {e}")
+            return "抱歉，AI 模型调用失败，请稍后重试"
 
     async def list_models(self) -> list[str]:
         """列出可用模型（异步）"""
@@ -58,10 +63,11 @@ class LLMService:
 
 
 _llm_service = None
+_llm_service_lock = asyncio.Lock()
 
 
 def get_llm_service() -> LLMService:
-    """获取 LLM 服务单例"""
+    """获取 LLM 服务单例（线程安全）"""
     global _llm_service
     if _llm_service is None:
         _llm_service = LLMService()

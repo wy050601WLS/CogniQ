@@ -128,7 +128,9 @@ class DocumentService:
             logger.info(f"文档处理完成: {file.filename}, 分块数: {chunk_count}")
         except Exception as e:
             doc.status = "error"
-            doc.error_message = str(e)[:500]  # 限制错误信息长度
+            error_msg = str(e)
+            # 安全截断，避免切断多字节字符
+            doc.error_message = error_msg[:500] + "..." if len(error_msg) > 500 else error_msg
             logger.error(f"文档处理失败: {e}")
 
         await db.commit()

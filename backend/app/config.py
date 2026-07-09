@@ -1,6 +1,10 @@
 """应用配置 - Pydantic v2 Settings"""
+import os
+import logging
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -54,11 +58,14 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context) -> None:
         """模型初始化后检查"""
-        # 生产环境强制要求设置 JWT 密钥
-        import os
-        if os.environ.get("ENVIRONMENT") == "production":
-            if self.JWT_SECRET_KEY == "knowledge-qa-secret-key-change-in-production":
+        environment = os.environ.get("ENVIRONMENT", "development")
+        default_key = "knowledge-qa-secret-key-change-in-production"
+
+        if environment == "production":
+            if self.JWT_SECRET_KEY == default_key:
                 raise ValueError("生产环境必须设置安全的 JWT_SECRET_KEY")
+        elif self.JWT_SECRET_KEY == default_key:
+            logger.warning("JWT_SECRET_KEY 使用默认值，仅限开发环境使用")
 
 
 settings = Settings()

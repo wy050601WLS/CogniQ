@@ -86,7 +86,7 @@ class ChatService:
         # 所有 DB 操作使用独立 session，避免依赖注入的 session 被提前关闭
         conv_id = data.conversation_id
         conv_title = None
-        conv_user_id = None
+        kb_id_for_rag = data.knowledge_base_id
 
         async with async_session() as session:
             # 创建或获取对话
@@ -95,7 +95,8 @@ class ChatService:
                 if conv.user_id != user_id:
                     raise PermissionDeniedError("无权访问此对话")
                 conv_title = conv.title
-                conv_user_id = conv.user_id
+                # 使用对话实际关联的知识库 ID
+                kb_id_for_rag = conv.knowledge_base_id
             else:
                 # 验证知识库是否存在
                 kb_result = await session.execute(
@@ -115,7 +116,6 @@ class ChatService:
                 await session.refresh(conv)
                 conv_id = conv.id
                 conv_title = conv.title
-                conv_user_id = conv.user_id
 
             # 保存用户消息
             user_msg = Message(
@@ -146,14 +146,6 @@ class ChatService:
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id, 'message_id': message_id})}\n\n"
 
         # RAG 问答（带对话历史）
-        # 使用对话实际关联的知识库 ID，而非前端传入的 ID
-        kb_id_for_rag = data.knowledge_base_id
-        if data.conversation_id:
-            kb_result = await session.execute(
-                select(Conversation.knowledge_base_id).where(Conversation.id == conv_id)
-            )
-            kb_id_for_rag = kb_result.scalar_one()
-
         full_response = ""
         all_sources = []
         rag_error = False

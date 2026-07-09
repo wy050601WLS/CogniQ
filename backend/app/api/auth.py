@@ -38,6 +38,12 @@ _WINDOW_SECONDS = 300  # 5分钟窗口
 _last_cleanup = time.time()
 _CLEANUP_INTERVAL = 60  # 每60秒清理一次过期条目
 
+# Refresh Token 黑名单（存储被撤销的 token jti）
+# 生产环境应使用 Redis
+_token_blacklist: set[str] = set()
+_token_blacklist_cleanup_time = time.time()
+_TOKEN_BLACKLIST_CLEANUP_INTERVAL = 300  # 每5分钟清理过期条目
+
 
 def _cleanup_expired():
     """清理过期的频率限制条目"""
@@ -68,6 +74,31 @@ def _check_rate_limit(key: str) -> bool:
     else:
         _login_attempts[key] = (1, now)
     return True
+
+
+def revoke_token(token_jti: str) -> None:
+    """将 Token 加入黑名单"""
+    _token_blacklist.add(token_jti)
+
+
+def is_token_revoked(token_jti: str) -> bool:
+    """检查 Token 是否已被撤销"""
+    return token_jti in _token_blacklist
+
+
+def _cleanup_blacklist():
+    """清理黑名单中已过期的 Token（通过解码检查）"""
+    global _token_blacklist_cleanup_time
+    now = time.time()
+    if now - _token_blacklist_cleanup_time < _TOKEN_BLACKLIST_CLEANUP_INTERVAL:
+        return
+    _token_blacklist_cleanup_time = now
+    expired = set()
+    for jti in _token_blacklist:
+        payload = decode_token(jti)
+        if not payload:
+            expired.add(jti)
+    _token_blacklist -= expired
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201, summary="用户注册")
@@ -151,6 +182,11 @@ async def refresh_token(data: RefreshTokenRequest, db: AsyncSession = Depends(ge
     if not payload or payload.get("type") != "refresh":
         raise ValidationError("无效的 Refresh Token")
 
+    # 检查 Token 是否已被撤销
+    token_jti = payload.get("jti")
+    if token_jti and is_token_revoked(token_jti):
+        raise ValidationError("Refresh Token 已被撤销，请重新登录")
+
     user_id = payload.get("sub")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -160,6 +196,10 @@ async def refresh_token(data: RefreshTokenRequest, db: AsyncSession = Depends(ge
 
     if user.status == "disabled":
         raise ValidationError("账号已被禁用")
+
+    # 撤销旧的 Refresh Token（Token 轮换）
+    if token_jti:
+        revoke_token(token_jti)
 
     access_token = create_access_token({"sub": user.id, "role": user.role})
     new_refresh_token = create_refresh_token({"sub": user.id})
@@ -210,6 +250,10 @@ async def change_password(
     # 更新密码
     current_user.password_hash = hash_password(data.new_password)
     await db.commit()
+
+    # 注意：修改密码后，客户端应清除本地 Token 并重新登录
+    # 此处不撤销 Token，因为当前没有有效的 refresh_token jti 可用
+    logger.info(f"用户修改密码: {current_user.username}")
 
     return {"message": "密码修改成功"}
 
