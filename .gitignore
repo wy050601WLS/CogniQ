@@ -33,3 +33,7 @@ admin-web/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# 临时文件
+~$*
+create_ppt.py
