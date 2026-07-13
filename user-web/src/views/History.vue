@@ -53,7 +53,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChatDotRound, Loading, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getConversations, deleteConversation, searchConversations } from '../api/knowledgeBase'
+import { getConversations, deleteConversation, searchConversations } from '../api/files'
 
 const router = useRouter()
 const conversations = ref([])

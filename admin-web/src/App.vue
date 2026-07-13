@@ -21,13 +21,9 @@
           <el-icon><User /></el-icon>
           <span v-if="!collapsed">用户管理</span>
         </router-link>
-        <router-link to="/knowledge-bases" class="nav-item">
-          <el-icon><Collection /></el-icon>
-          <span v-if="!collapsed">知识库管理</span>
-        </router-link>
-        <router-link to="/documents" class="nav-item">
+        <router-link to="/files" class="nav-item">
           <el-icon><Document /></el-icon>
-          <span v-if="!collapsed">文档管理</span>
+          <span v-if="!collapsed">文件管理</span>
         </router-link>
         <router-link to="/statistics" class="nav-item">
           <el-icon><TrendCharts /></el-icon>
@@ -86,8 +82,7 @@ const currentTitle = computed(() => {
   const titles = {
     '/dashboard': '仪表盘',
     '/users': '用户管理',
-    '/knowledge-bases': '知识库管理',
-    '/documents': '文档管理',
+    '/files': '文件管理',
     '/statistics': '数据统计',
     '/settings': '系统设置',
   }

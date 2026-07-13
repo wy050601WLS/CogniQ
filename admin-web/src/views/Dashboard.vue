@@ -20,22 +20,13 @@
           <div class="stat-label">用户总数</div>
         </div>
       </div>
-      <div class="stat-card green" @click="$router.push('/knowledge-bases')">
-        <div class="stat-icon">
-          <el-icon :size="28"><Collection /></el-icon>
-        </div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.kbCount }}</div>
-          <div class="stat-label">知识库总数</div>
-        </div>
-      </div>
-      <div class="stat-card purple" @click="$router.push('/documents')">
+      <div class="stat-card green" @click="$router.push('/files')">
         <div class="stat-icon">
           <el-icon :size="28"><Document /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ stats.docCount }}</div>
-          <div class="stat-label">文档总数</div>
+          <div class="stat-value">{{ stats.fileCount }}</div>
+          <div class="stat-label">文件总数</div>
         </div>
       </div>
       <div class="stat-card orange">
@@ -57,13 +48,9 @@
           <el-icon class="action-icon blue"><User /></el-icon>
           <span>用户管理</span>
         </div>
-        <div class="action-card" @click="$router.push('/knowledge-bases')">
-          <el-icon class="action-icon green"><Collection /></el-icon>
-          <span>知识库管理</span>
-        </div>
-        <div class="action-card" @click="$router.push('/documents')">
-          <el-icon class="action-icon purple"><Document /></el-icon>
-          <span>文档管理</span>
+        <div class="action-card" @click="$router.push('/files')">
+          <el-icon class="action-icon green"><Document /></el-icon>
+          <span>文件管理</span>
         </div>
         <div class="action-card" @click="$router.push('/settings')">
           <el-icon class="action-icon orange"><Setting /></el-icon>
@@ -140,8 +127,7 @@ onMounted(async () => {
     const { data } = await getOverviewStats()
     stats.value = {
       userCount: data.user_count || 0,
-      kbCount: data.knowledge_base_count || 0,
-      docCount: data.document_count || 0,
+      fileCount: data.file_count || 0,
       convCount: data.conversation_count || 0,
     }
   } catch (e) {

@@ -29,7 +29,6 @@ api.interceptors.response.use(
       || '请求失败'
 
     if (status === 401) {
-      // 清除所有认证状态
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       window.location.href = '/login'
@@ -57,19 +56,15 @@ export const getUser = (id) => api.get(`/admin/users/${id}`)
 export const updateUser = (id, data) => api.put(`/admin/users/${id}`, data)
 export const deleteUser = (id) => api.delete(`/admin/users/${id}`)
 
-// 知识库管理
-export const getAdminKnowledgeBases = () => api.get('/admin/knowledge-bases')
-export const deleteAdminKnowledgeBase = (id) => api.delete(`/admin/knowledge-bases/${id}`)
-
-// 文档管理
-export const getAdminDocuments = () => api.get('/admin/documents')
-export const deleteAdminDocument = (id) => api.delete(`/admin/documents/${id}`)
+// 文件管理
+export const getAdminFiles = () => api.get('/admin/files')
+export const deleteAdminFile = (id) => api.delete(`/admin/files/${id}`)
 
 // 统计
 export const getOverviewStats = () => api.get('/admin/stats/overview')
 export const getUserStats = () => api.get('/admin/stats/users')
 export const getTrends = () => api.get('/admin/stats/trends')
 
-// 设置（使用统一的 /settings 端点）
+// 设置
 export const getAdminSettings = () => api.get('/settings')
 export const updateAdminSettings = (data) => api.put('/settings', data)

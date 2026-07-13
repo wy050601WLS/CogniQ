@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.exceptions import PermissionDeniedError, NotFoundError
-from app.models.knowledge_base import KnowledgeBase
+from app.models.document import Document
 from app.models.conversation import Conversation, Message
 from app.schemas.chat import ChatRequest, ConversationCreate, ConversationResponse
 from app.services.chat import rag_chat
@@ -22,14 +22,12 @@ class ChatService:
     @staticmethod
     async def list_conversations(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 20) -> tuple[list[Conversation], int]:
         """获取用户的所有对话（分页）"""
-        # 获取总数
         from sqlalchemy import func
         count_result = await db.execute(
             select(func.count(Conversation.id)).where(Conversation.user_id == user_id)
         )
         total = count_result.scalar() or 0
 
-        # 获取分页数据
         offset = (page - 1) * page_size
         result = await db.execute(
             select(Conversation)
@@ -45,17 +43,8 @@ class ChatService:
         db: AsyncSession, data: ConversationCreate, user_id: str
     ) -> Conversation:
         """创建对话"""
-        # 验证知识库是否存在
-        kb_result = await db.execute(
-            select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
-        )
-        kb = kb_result.scalar_one_or_none()
-        if not kb:
-            raise NotFoundError("知识库", data.knowledge_base_id)
-
         conv = Conversation(
             user_id=user_id,
-            knowledge_base_id=data.knowledge_base_id,
             title=data.title or "新对话",
         )
         db.add(conv)
@@ -66,7 +55,6 @@ class ChatService:
     @staticmethod
     async def list_messages(db: AsyncSession, conv_id: str, user_id: str) -> list[Message]:
         """获取对话消息"""
-        # 验证对话存在且属于当前用户
         conv = await get_or_404(db, Conversation, conv_id, "对话")
         if conv.user_id != user_id:
             raise PermissionDeniedError("无权访问此对话")
@@ -91,13 +79,10 @@ class ChatService:
     async def chat_stream(data: ChatRequest, db: AsyncSession, user_id: str):
         """流式聊天 SSE 生成器
 
-        注意：由于 StreamingResponse 在 endpoint 返回后才消费生成器，
-        此时 FastAPI 已关闭注入的 db session，所以所有 DB 操作必须使用新 session。
+        自动匹配用户的所有文件进行检索。
         """
-        # 所有 DB 操作使用独立 session，避免依赖注入的 session 被提前关闭
         conv_id = data.conversation_id
         conv_title = None
-        kb_id_for_rag = data.knowledge_base_id
 
         async with async_session() as session:
             # 创建或获取对话
@@ -106,20 +91,9 @@ class ChatService:
                 if conv.user_id != user_id:
                     raise PermissionDeniedError("无权访问此对话")
                 conv_title = conv.title
-                # 使用对话实际关联的知识库 ID
-                kb_id_for_rag = conv.knowledge_base_id
             else:
-                # 验证知识库是否存在
-                kb_result = await session.execute(
-                    select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
-                )
-                kb = kb_result.scalar_one_or_none()
-                if not kb:
-                    raise NotFoundError("知识库", data.knowledge_base_id)
-
                 conv = Conversation(
                     user_id=user_id,
-                    knowledge_base_id=data.knowledge_base_id,
                     title=data.message[:50],
                 )
                 session.add(conv)
@@ -137,31 +111,36 @@ class ChatService:
             session.add(user_msg)
             await session.commit()
 
-            # 加载对话历史（用于多轮对话记忆）- 排除刚保存的用户消息避免重复
+            # 加载对话历史
             history_result = await session.execute(
                 select(Message)
                 .where(Message.conversation_id == conv_id)
                 .order_by(Message.created_at)
-                .limit(21)  # 多加载1条，后面排除最新的
+                .limit(21)
             )
             history_messages = history_result.scalars().all()
-            # 排除最后一条（刚保存的用户消息），避免与 data.message 重复
             if history_messages and history_messages[-1].role == "user":
                 history_messages = history_messages[:-1]
             history = [{"role": msg.role, "content": msg.content} for msg in history_messages]
 
-        # 使用固定的消息 ID，保持前端和数据库一致
+            # 获取用户的所有文件 ID（用于 RAG 检索）
+            files_result = await session.execute(
+                select(Document.id).where(Document.owner_id == user_id, Document.status == "completed")
+            )
+            user_file_ids = [row[0] for row in files_result.all()]
+
+        # 使用固定的消息 ID
         message_id = str(uuid.uuid4())
 
         # 发送开始事件
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id, 'message_id': message_id})}\n\n"
 
-        # RAG 问答（带对话历史）
+        # RAG 问答（自动匹配文件）
         full_response = ""
         all_sources = []
         rag_error = False
         try:
-            async for chunk, sources in rag_chat(kb_id_for_rag, data.message, history):
+            async for chunk, sources in rag_chat(user_file_ids, data.message, history):
                 full_response += chunk
                 all_sources = sources
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
@@ -176,7 +155,7 @@ class ChatService:
         if all_sources:
             yield f"data: {json.dumps({'type': 'sources', 'documents': all_sources})}\n\n"
 
-        # 使用新的 session 保存助手消息（仅在 RAG 成功时保存）
+        # 保存助手消息
         if not rag_error:
             async with async_session() as save_session:
                 try:
@@ -215,17 +194,8 @@ class ChatService:
             if conv.user_id != user_id:
                 raise PermissionDeniedError("无权访问此对话")
         else:
-            # 验证知识库是否存在
-            kb_result = await db.execute(
-                select(KnowledgeBase).where(KnowledgeBase.id == data.knowledge_base_id)
-            )
-            kb = kb_result.scalar_one_or_none()
-            if not kb:
-                raise NotFoundError("知识库", data.knowledge_base_id)
-
             conv = Conversation(
                 user_id=user_id,
-                knowledge_base_id=data.knowledge_base_id,
                 title=data.message[:50],
             )
             db.add(conv)
@@ -241,34 +211,31 @@ class ChatService:
         db.add(user_msg)
         await db.commit()
 
-        # 加载对话历史（用于多轮对话记忆）- 使用新的 session 避免过期
+        # 加载对话历史
         async with async_session() as history_session:
             history_result = await history_session.execute(
                 select(Message)
                 .where(Message.conversation_id == conv.id)
                 .order_by(Message.created_at)
-                .limit(21)  # 多加载1条，后面排除最新的
+                .limit(21)
             )
             history_messages = history_result.scalars().all()
-            # 排除最后一条（刚保存的用户消息），避免与 data.message 重复
             if history_messages and history_messages[-1].role == "user":
                 history_messages = history_messages[:-1]
             history = [{"role": msg.role, "content": msg.content} for msg in history_messages]
 
-        # RAG 问答（带对话历史）
-        # 使用对话实际关联的知识库 ID，而非前端传入的 ID
-        kb_id_for_rag = data.knowledge_base_id
-        if data.conversation_id:
-            kb_result = await db.execute(
-                select(Conversation.knowledge_base_id).where(Conversation.id == conv.id)
-            )
-            kb_id_for_rag = kb_result.scalar_one()
+        # 获取用户的所有文件 ID
+        files_result = await db.execute(
+            select(Document.id).where(Document.owner_id == user_id, Document.status == "completed")
+        )
+        user_file_ids = [row[0] for row in files_result.all()]
 
+        # RAG 问答
         full_response = ""
         all_sources = []
         rag_error = False
         try:
-            async for chunk, sources in rag_chat(kb_id_for_rag, data.message, history):
+            async for chunk, sources in rag_chat(user_file_ids, data.message, history):
                 full_response += chunk
                 all_sources = sources
         except Exception as e:
@@ -276,7 +243,7 @@ class ChatService:
             full_response = "抱歉，处理您的问题时出现错误，请稍后重试"
             rag_error = True
 
-        # 仅在 RAG 成功时保存助手消息
+        # 保存助手消息
         message_id = str(uuid.uuid4())
         if not rag_error:
             assistant_msg = Message(

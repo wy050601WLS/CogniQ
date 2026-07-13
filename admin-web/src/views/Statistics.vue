@@ -15,20 +15,11 @@
       </div>
       <div class="overview-card">
         <div class="overview-icon green">
-          <el-icon :size="24"><Collection /></el-icon>
-        </div>
-        <div class="overview-info">
-          <div class="overview-value">{{ overview.kbCount }}</div>
-          <div class="overview-label">总知识库</div>
-        </div>
-      </div>
-      <div class="overview-card">
-        <div class="overview-icon purple">
           <el-icon :size="24"><Document /></el-icon>
         </div>
         <div class="overview-info">
-          <div class="overview-value">{{ overview.docCount }}</div>
-          <div class="overview-label">总文档数</div>
+          <div class="overview-value">{{ overview.fileCount }}</div>
+          <div class="overview-label">总文件数</div>
         </div>
       </div>
       <div class="overview-card">
@@ -122,8 +113,7 @@ onMounted(async () => {
 
     overview.value = {
       userCount: overviewRes.data.user_count || 0,
-      kbCount: overviewRes.data.knowledge_base_count || 0,
-      docCount: overviewRes.data.document_count || 0,
+      fileCount: overviewRes.data.file_count || 0,
       msgCount: overviewRes.data.message_count || 0
     }
 

@@ -20,13 +20,8 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/knowledge-bases',
-    component: () => import('../views/KnowledgeBases.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/documents',
-    component: () => import('../views/Documents.vue'),
+    path: '/files',
+    component: () => import('../views/Files.vue'),
     meta: { requiresAuth: true },
   },
   {
@@ -56,7 +51,6 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth) {
     if (!authStore.isLoggedIn || !authStore.isAdmin) {
-      // 仅重定向到登录页，不强制登出
       next('/login')
       return
     }

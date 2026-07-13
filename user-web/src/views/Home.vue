@@ -10,9 +10,9 @@
             <el-icon><ChatDotRound /></el-icon>
             开始问答
           </el-button>
-          <el-button size="large" @click="$router.push('/marketplace')">
-            <el-icon><Grid /></el-icon>
-            探索知识库
+          <el-button size="large" @click="$router.push('/files')">
+            <el-icon><Upload /></el-icon>
+            上传文件
           </el-button>
         </div>
       </div>
@@ -23,20 +23,11 @@
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-icon blue">
-          <el-icon><Collection /></el-icon>
-        </div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.kbCount }}</div>
-          <div class="stat-label">知识库</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon green">
           <el-icon><Document /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ stats.docCount }}</div>
-          <div class="stat-label">文档</div>
+          <div class="stat-value">{{ stats.fileCount }}</div>
+          <div class="stat-label">文件</div>
         </div>
       </div>
       <div class="stat-card">
@@ -48,44 +39,34 @@
           <div class="stat-label">对话</div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon orange">
-          <el-icon><Star /></el-icon>
-        </div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.favCount }}</div>
-          <div class="stat-label">收藏</div>
-        </div>
-      </div>
     </div>
 
-    <!-- 推荐知识库 -->
+    <!-- 推荐文件 -->
     <div class="section">
       <div class="section-header">
-        <h2>推荐知识库</h2>
-        <el-button text @click="$router.push('/marketplace')">查看全部</el-button>
+        <h2>推荐文件</h2>
+        <el-button text @click="$router.push('/shared')">查看全部</el-button>
       </div>
-      <div class="kb-grid">
+      <div class="file-grid">
         <div
-          v-for="kb in knowledgeBases"
-          :key="kb.id"
-          class="kb-card"
-          @click="handleViewKB(kb)"
+          v-for="file in sharedFiles"
+          :key="file.id"
+          class="file-card"
+          @click="handleViewFile(file)"
         >
-          <div class="kb-card-icon" :class="{ official: kb.is_official }">
-            <el-icon><Collection /></el-icon>
+          <div class="file-icon" :class="getFileTypeClass(file.file_type)">
+            <el-icon><Document /></el-icon>
           </div>
-          <div class="kb-card-content">
-            <h3>{{ kb.name }}</h3>
-            <p>{{ kb.description || '暂无描述' }}</p>
-            <div class="kb-card-meta">
-              <span><el-icon><Document /></el-icon> {{ kb.doc_count }} 篇</span>
-              <span><el-icon><User /></el-icon> {{ kb.copy_count }} 次复制</span>
+          <div class="file-card-content">
+            <h3>{{ file.filename }}</h3>
+            <p>{{ file.description || '暂无描述' }}</p>
+            <div class="file-card-meta">
+              <span><el-icon><View /></el-icon> {{ file.view_count }} 次查看</span>
+              <span><el-icon><CopyDocument /></el-icon> {{ file.copy_count }} 次复制</span>
             </div>
           </div>
-          <el-tag v-if="kb.is_official" type="success" size="small">官方</el-tag>
         </div>
-        <el-empty v-if="knowledgeBases.length === 0 && !loading" description="暂无推荐知识库" />
+        <el-empty v-if="sharedFiles.length === 0 && !loading" description="暂无推荐文件" />
       </div>
       <div v-if="loading" class="loading-state">
         <el-icon class="is-loading"><Loading /></el-icon>
@@ -97,17 +78,17 @@
     <div class="section">
       <h2>快捷操作</h2>
       <div class="action-grid">
-        <div class="action-card" @click="$router.push('/my-kb')">
-          <el-icon class="action-icon blue"><Collection /></el-icon>
-          <span>我的知识库</span>
+        <div class="action-card" @click="$router.push('/files')">
+          <el-icon class="action-icon blue"><Document /></el-icon>
+          <span>我的文件</span>
         </div>
         <div class="action-card" @click="$router.push('/chat')">
           <el-icon class="action-icon green"><ChatDotRound /></el-icon>
           <span>智能问答</span>
         </div>
-        <div class="action-card" @click="$router.push('/favorites')">
-          <el-icon class="action-icon orange"><Star /></el-icon>
-          <span>我的收藏</span>
+        <div class="action-card" @click="$router.push('/shared')">
+          <el-icon class="action-icon orange"><Grid /></el-icon>
+          <span>知识广场</span>
         </div>
         <div class="action-card" @click="$router.push('/history')">
           <el-icon class="action-icon purple"><Clock /></el-icon>
@@ -122,44 +103,29 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ChatDotRound, Grid, Collection, Document, User,
-  Star, Clock, Loading
+  ChatDotRound, Grid, Document, User,
+  Clock, Loading, Upload, View, CopyDocument
 } from '@element-plus/icons-vue'
-import { getMarketplace, getMyKnowledgeBases, getFavorites, getConversations } from '../api/knowledgeBase'
+import { getSharedFiles } from '../api/files'
+import { getConversations } from '../api/files'
 
 const router = useRouter()
-const knowledgeBases = ref([])
-const stats = ref({ kbCount: 0, docCount: 0, convCount: 0, favCount: 0 })
+const sharedFiles = ref([])
+const stats = ref({ fileCount: 0, convCount: 0 })
 const loading = ref(true)
 
 onMounted(async () => {
   try {
     const token = localStorage.getItem('token')
-    
-    // 并行加载数据
-    const promises = [getMarketplace()]
-    
+
+    // 加载公开文件
+    const filesRes = await getSharedFiles().catch(() => ({ data: [] }))
+    sharedFiles.value = (filesRes.data || []).slice(0, 4)
+
+    // 加载对话统计
     if (token) {
-      promises.push(
-        getMyKnowledgeBases().catch(() => ({ data: { items: [], total: 0 } })),
-        getConversations().catch(() => ({ data: [] })),
-        getFavorites().catch(() => ({ data: [] }))
-      )
-    }
-    
-    const results = await Promise.all(promises)
-    
-    // 处理知识库广场数据
-    const marketplaceData = results[0].data
-    knowledgeBases.value = (marketplaceData.items || []).slice(0, 4)
-    
-    // 处理用户数据
-    if (token && results.length >= 4) {
-      const myKBs = results[1].data?.items || []
-      stats.value.kbCount = myKBs.length
-      stats.value.docCount = myKBs.reduce((sum, kb) => sum + (kb.doc_count || 0), 0)
-      stats.value.convCount = Array.isArray(results[2].data) ? results[2].data.length : 0
-      stats.value.favCount = Array.isArray(results[3].data) ? results[3].data.length : 0
+      const convRes = await getConversations().catch(() => ({ data: [] }))
+      stats.value.convCount = Array.isArray(convRes.data) ? convRes.data.length : 0
     }
   } catch (e) {
     console.error('加载首页数据失败:', e)
@@ -168,10 +134,22 @@ onMounted(async () => {
   }
 })
 
-function handleViewKB(kb) {
+function getFileTypeClass(type) {
+  const classes = {
+    pdf: 'type-pdf',
+    docx: 'type-word',
+    doc: 'type-word',
+    md: 'type-md',
+    txt: 'type-txt',
+    html: 'type-html'
+  }
+  return classes[type] || ''
+}
+
+function handleViewFile(file) {
   const token = localStorage.getItem('token')
   if (token) {
-    router.push(`/kb/${kb.id}`)
+    router.push(`/files/${file.id}`)
   } else {
     router.push('/login')
   }
@@ -189,23 +167,22 @@ function handleViewKB(kb) {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   border-radius: 16px;
   padding: 40px;
+  margin-bottom: 32px;
+  color: #fff;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  color: #fff;
 }
 
 .welcome-content h1 {
   margin: 0 0 12px;
   font-size: 28px;
-  font-weight: 700;
 }
 
 .welcome-content p {
   margin: 0 0 24px;
-  font-size: 16px;
   opacity: 0.9;
+  font-size: 16px;
 }
 
 .welcome-actions {
@@ -215,15 +192,14 @@ function handleViewKB(kb) {
 
 .welcome-icon {
   font-size: 80px;
-  opacity: 0.8;
 }
 
 /* 统计卡片 */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .stat-card {
@@ -243,14 +219,16 @@ function handleViewKB(kb) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
   color: #fff;
 }
 
-.stat-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-.stat-icon.green { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
-.stat-icon.purple { background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); }
-.stat-icon.orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+.stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.stat-icon.green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-icon.purple { background: linear-gradient(135deg, #a855f7, #9333ea); }
+
+.stat-info {
+  flex: 1;
+}
 
 .stat-value {
   font-size: 24px;
@@ -266,7 +244,7 @@ function handleViewKB(kb) {
 
 /* 区块 */
 .section {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .section-header {
@@ -276,91 +254,72 @@ function handleViewKB(kb) {
   margin-bottom: 16px;
 }
 
-.section-header h2, .section > h2 {
+.section-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: #1e293b;
+  font-size: 20px;
 }
 
-/* 加载状态 */
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px;
-  color: #94a3b8;
-}
-
-/* 知识库网格 */
-.kb-grid {
+/* 文件网格 */
+.file-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
 
-.kb-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.file-card {
   background: #fff;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   transition: all 0.2s;
 }
 
-.kb-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+.file-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
-.kb-card-icon {
-  width: 52px;
-  height: 52px;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  border-radius: 12px;
+.file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 26px;
-  flex-shrink: 0;
+  font-size: 20px;
+  margin-bottom: 12px;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
-.kb-card-icon.official {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
+.file-icon.type-pdf { background: #fee2e2; color: #ef4444; }
+.file-icon.type-word { background: #dbeafe; color: #3b82f6; }
+.file-icon.type-md { background: #dcfce7; color: #22c55e; }
 
-.kb-card-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.kb-card-content h3 {
+.file-card-content h3 {
   margin: 0 0 4px;
-  font-size: 16px;
+  font-size: 15px;
   color: #1e293b;
 }
 
-.kb-card-content p {
+.file-card-content p {
   margin: 0 0 8px;
   font-size: 13px;
   color: #64748b;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.kb-card-meta {
+.file-card-meta {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   font-size: 12px;
   color: #94a3b8;
 }
 
-.kb-card-meta span {
+.file-card-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -376,23 +335,21 @@ function handleViewKB(kb) {
 .action-card {
   background: #fff;
   border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  padding: 20px;
+  text-align: center;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   transition: all 0.2s;
+  border: 1px solid #e2e8f0;
 }
 
 .action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
 .action-icon {
-  font-size: 32px;
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 
 .action-icon.blue { color: #3b82f6; }
@@ -402,7 +359,16 @@ function handleViewKB(kb) {
 
 .action-card span {
   font-size: 14px;
-  font-weight: 500;
   color: #1e293b;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 0;
+  color: #94a3b8;
 }
 </style>

@@ -9,11 +9,9 @@ from typing import Optional
 from app.core.database import get_db
 from app.deps import get_current_admin
 from app.models.user import User
-from app.models.knowledge_base import KnowledgeBase
 from app.models.document import Document
 from app.models.conversation import Conversation, Message
 from app.schemas.user import UserResponse
-from app.schemas.knowledge_base import KnowledgeBaseResponse, KnowledgeBaseListResponse
 from app.schemas.document import DocumentResponse
 from app.services.audit_log import log_action
 from app.utils.helpers import get_or_404
@@ -134,78 +132,33 @@ async def delete_user(
     )
 
 
-# ===== 知识库管理 =====
+# ===== 文件管理 =====
 
-@router.get("/knowledge-bases", response_model=KnowledgeBaseListResponse, summary="获取所有知识库")
-async def list_knowledge_bases(
+@router.get("/files", response_model=list[DocumentResponse], summary="获取所有文件")
+async def list_files(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理员获取所有知识库"""
-    result = await db.execute(select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc()))
-    items = result.scalars().all()
-    return KnowledgeBaseListResponse(items=items, total=len(items))
-
-
-@router.delete("/knowledge-bases/{kb_id}", status_code=204, summary="删除知识库")
-async def delete_knowledge_base(
-    kb_id: str,
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """管理员删除任意知识库"""
-    kb = await get_or_404(db, KnowledgeBase, kb_id, "知识库")
-
-    # 清理向量数据
-    try:
-        from app.services.vector_store import get_vector_store
-        vector_store = get_vector_store()
-        vector_store.delete_collection(kb_id)
-        logger.info(f"已清理知识库向量数据: {kb_id}")
-    except Exception as e:
-        logger.warning(f"清理向量数据失败: {e}")
-
-    await db.delete(kb)
-    await db.commit()
-
-    # 记录操作日志
-    await log_action(
-        action="delete",
-        user_id=admin.id,
-        username=admin.username,
-        resource_type="knowledge_base",
-        resource_id=kb_id,
-        detail=f"删除知识库 {kb.name}",
-    )
-
-
-# ===== 文档管理 =====
-
-@router.get("/documents", response_model=list[DocumentResponse], summary="获取所有文档")
-async def list_documents(
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """管理员获取所有文档"""
+    """管理员获取所有文件"""
     result = await db.execute(select(Document).order_by(Document.created_at.desc()))
     return result.scalars().all()
 
 
-@router.delete("/documents/{doc_id}", status_code=204, summary="删除文档")
-async def delete_document(
+@router.delete("/files/{doc_id}", status_code=204, summary="删除文件")
+async def delete_file(
     doc_id: str,
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理员删除任意文档"""
-    doc = await get_or_404(db, Document, doc_id, "文档")
+    """管理员删除任意文件"""
+    doc = await get_or_404(db, Document, doc_id, "文件")
 
     # 清理向量数据
     try:
         from app.services.vector_store import get_vector_store
         vector_store = get_vector_store()
-        vector_store.delete_documents(doc.knowledge_base_id, [doc.id])
-        logger.info(f"已清理文档向量数据: {doc_id}")
+        vector_store.delete_documents(doc_id)
+        logger.info(f"已清理文件向量数据: {doc_id}")
     except Exception as e:
         logger.warning(f"清理向量数据失败: {e}")
 
@@ -219,7 +172,7 @@ async def delete_document(
         username=admin.username,
         resource_type="document",
         resource_id=doc_id,
-        detail=f"删除文档 {doc.filename}",
+        detail=f"删除文件 {doc.filename}",
     )
 
 
@@ -232,14 +185,12 @@ async def stats_overview(
 ):
     """获取系统总览统计"""
     user_count = (await db.execute(select(func.count(User.id)))).scalar() or 0
-    kb_count = (await db.execute(select(func.count(KnowledgeBase.id)))).scalar() or 0
-    doc_count = (await db.execute(select(func.count(Document.id)))).scalar() or 0
+    file_count = (await db.execute(select(func.count(Document.id)))).scalar() or 0
     conv_count = (await db.execute(select(func.count(Conversation.id)))).scalar() or 0
     msg_count = (await db.execute(select(func.count(Message.id)))).scalar() or 0
     return {
         "user_count": user_count,
-        "knowledge_base_count": kb_count,
-        "document_count": doc_count,
+        "file_count": file_count,
         "conversation_count": conv_count,
         "message_count": msg_count,
     }

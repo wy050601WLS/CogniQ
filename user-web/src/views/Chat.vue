@@ -39,9 +39,8 @@
       <!-- 聊天头部 -->
       <div class="chat-header">
         <div class="header-left">
-          <el-select v-model="selectedKB" placeholder="选择知识库" size="small" style="width: 180px">
-            <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
-          </el-select>
+          <span class="chat-title">智能问答</span>
+          <span class="chat-hint">系统将自动匹配最相关的文件</span>
         </div>
         <div class="header-right" v-if="currentConvId">
           <el-dropdown @command="handleExport">
@@ -64,8 +63,8 @@
         <div v-if="messages.length === 0 && !streaming" class="welcome">
           <div class="welcome-icon">💬</div>
           <h2>开始智能问答</h2>
-          <p>选择知识库，输入问题，AI 为您精准解答</p>
-          <div class="quick-questions" v-if="selectedKB">
+          <p>输入问题，AI 自动匹配最相关的文件为您解答</p>
+          <div class="quick-questions">
             <div class="quick-item" v-for="q in quickQuestions" :key="q" @click="askQuick(q)">{{ q }}</div>
           </div>
         </div>
@@ -132,16 +131,14 @@
             :autosize="{ minRows: 1, maxRows: 4 }"
             placeholder="输入您的问题... (Enter 发送，Shift+Enter 换行)"
             @keydown="handleKeydown"
-            :disabled="!selectedKB"
             resize="none"
           />
-          <el-button type="primary" circle size="large" :disabled="!inputMessage.trim() || !selectedKB" :loading="streaming" @click="sendMessage">
+          <el-button type="primary" circle size="large" :disabled="!inputMessage.trim()" :loading="streaming" @click="sendMessage">
             <el-icon v-if="!streaming"><Promotion /></el-icon>
           </el-button>
         </div>
         <div class="input-hint">
-          <span v-if="!selectedKB">请先选择知识库</span>
-          <span v-else>Enter 发送 · Shift+Enter 换行</span>
+          Enter 发送 · Shift+Enter 换行
         </div>
       </div>
     </div>
@@ -157,23 +154,21 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import {
   getConversations, createConversation, getMessages, deleteConversation,
-  getMyKnowledgeBases, chatStream, submitFeedback
-} from '../api/knowledgeBase'
+  chatStream, submitFeedback
+} from '../api/files'
 
 const route = useRoute()
 const conversations = ref([])
-const knowledgeBases = ref([])
 const currentConvId = ref(null)
 const messages = ref([])
 const inputMessage = ref('')
-const selectedKB = ref('')
 const streaming = ref(false)
 const streamingText = ref('')
 const streamingSources = ref([])
 const messagesRef = ref(null)
 const searchText = ref('')
 
-const quickQuestions = ['这个知识库包含哪些内容？', '帮我总结一下主要观点', '有哪些重要的概念？']
+const quickQuestions = ['帮我总结一下主要观点', '有哪些重要的概念？', '解释一下核心流程']
 
 const filteredConversations = computed(() => {
   if (!searchText.value) return conversations.value
@@ -182,18 +177,9 @@ const filteredConversations = computed(() => {
 
 onMounted(async () => {
   try {
-    const [convRes, kbRes] = await Promise.all([getConversations(), getMyKnowledgeBases()])
-    conversations.value = convRes.data
-    knowledgeBases.value = kbRes.data.items || []
-    
-    // 优先使用 kbId 查询参数选中知识库
-    const kbId = route.query.kbId
-    if (kbId && knowledgeBases.value.some(kb => String(kb.id) === String(kbId))) {
-      selectedKB.value = kbId
-    } else if (knowledgeBases.value.length > 0) {
-      selectedKB.value = knowledgeBases.value[0].id
-    }
-    
+    const convRes = await getConversations()
+    conversations.value = convRes.data || []
+
     // 如果有 convId query 参数，自动打开该对话
     const convId = route.query.convId
     if (convId) {
@@ -226,9 +212,8 @@ function handleKeydown(e) {
 function askQuick(q) { inputMessage.value = q; sendMessage() }
 
 async function startNewChat() {
-  if (!selectedKB.value) { ElMessage.warning('请先选择知识库'); return }
   try {
-    const { data } = await createConversation({ knowledge_base_id: selectedKB.value, title: '新对话' })
+    const { data } = await createConversation({ title: '新对话' })
     conversations.value.unshift(data)
     selectConv(data)
   } catch (e) {
@@ -269,18 +254,17 @@ async function deleteConv(conv) {
 
 async function sendMessage() {
   if (!inputMessage.value.trim() || streaming.value) return
-  if (!selectedKB.value) { ElMessage.warning('请先选择知识库'); return }
   const msg = inputMessage.value
   inputMessage.value = ''
 
-  // 添加临时用户消息（标记为临时）
+  // 添加临时用户消息
   const tempUserMsg = { id: `temp_${Date.now()}`, role: 'user', content: msg, isTemp: true }
   messages.value.push(tempUserMsg)
   scrollToBottom()
 
   if (!currentConvId.value) {
     try {
-      const { data } = await createConversation({ knowledge_base_id: selectedKB.value, title: msg.slice(0, 50) })
+      const { data } = await createConversation({ title: msg.slice(0, 50) })
       conversations.value.unshift(data)
       currentConvId.value = data.id
     } catch (e) {
@@ -294,11 +278,10 @@ async function sendMessage() {
 
   streaming.value = true; streamingText.value = ''; streamingSources.value = []
   try {
-    await chatStream({ conversation_id: currentConvId.value, knowledge_base_id: selectedKB.value, message: msg },
+    await chatStream({ conversation_id: currentConvId.value, message: msg },
       (chunk) => { streamingText.value += chunk; scrollToBottom() },
       (sources) => { streamingSources.value = sources || [] },
       () => {
-        // 添加临时助手消息
         const tempAssistantMsg = {
           id: `temp_${Date.now()}`,
           role: 'assistant',
@@ -310,14 +293,11 @@ async function sendMessage() {
         streaming.value = false
         streamingText.value = ''
         streamingSources.value = []
-
-        // 异步从服务器加载真实消息，替换临时消息
         refreshMessages()
       }
     )
   } catch (e) {
     console.error('聊天失败:', e)
-    // 如果已接收到部分内容，保留为助手消息
     if (streamingText.value) {
       messages.value.push({
         id: `partial_${Date.now()}`,

@@ -23,21 +23,15 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/my-kb',
-    name: 'MyKnowledgeBases',
-    component: () => import('../views/MyKnowledgeBases.vue'),
+    path: '/files',
+    name: 'Files',
+    component: () => import('../views/Files.vue'),
     meta: { requiresAuth: true },
   },
   {
-    path: '/kb/:id',
-    name: 'KnowledgeBaseDetail',
-    component: () => import('../views/KnowledgeBaseDetail.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/favorites',
-    name: 'Favorites',
-    component: () => import('../views/Favorites.vue'),
+    path: '/files/:id',
+    name: 'FileDetail',
+    component: () => import('../views/FileDetail.vue'),
     meta: { requiresAuth: true },
   },
   {
@@ -53,9 +47,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/marketplace',
-    name: 'Marketplace',
-    component: () => import('../views/Marketplace.vue'),
+    path: '/shared',
+    name: 'Shared',
+    component: () => import('../views/Shared.vue'),
   },
   {
     path: '/help',

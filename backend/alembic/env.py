@@ -17,10 +17,8 @@ if config.config_file_name is not None:
 # 导入所有模型以确保 Alembic 能检测到
 from app.core.database import Base
 from app.models.user import User
-from app.models.knowledge_base import KnowledgeBase
-from app.models.document import Document
+from app.models.document import Document, DocumentVersion
 from app.models.conversation import Conversation, Message
-from app.models.favorite import Favorite
 from app.models.feedback import Feedback
 from app.models.setting import Setting
 

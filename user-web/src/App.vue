@@ -20,17 +20,13 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>智能问答</span>
         </router-link>
-        <router-link to="/my-kb" class="nav-item">
-          <el-icon><Collection /></el-icon>
-          <span>我的知识库</span>
+        <router-link to="/files" class="nav-item">
+          <el-icon><Document /></el-icon>
+          <span>我的文件</span>
         </router-link>
-        <router-link to="/marketplace" class="nav-item">
+        <router-link to="/shared" class="nav-item">
           <el-icon><Grid /></el-icon>
-          <span>知识库广场</span>
-        </router-link>
-        <router-link to="/favorites" class="nav-item">
-          <el-icon><Star /></el-icon>
-          <span>我的收藏</span>
+          <span>知识广场</span>
         </router-link>
         <router-link to="/history" class="nav-item">
           <el-icon><Clock /></el-icon>
@@ -82,7 +78,7 @@
           </el-button>
           <el-input
             v-model="globalSearch"
-            placeholder="搜索知识库..."
+            placeholder="搜索文件..."
             prefix-icon="Search"
             clearable
             style="width: 240px"
@@ -135,7 +131,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
-import { getMarketplace } from './api/knowledgeBase'
+import { getSharedFiles } from './api/files'
 
 const route = useRoute()
 const router = useRouter()
@@ -149,9 +145,8 @@ const searchResults = ref([])
 const currentTitle = computed(() => {
   const titles = {
     '/chat': '智能问答',
-    '/my-kb': '我的知识库',
-    '/marketplace': '知识库广场',
-    '/favorites': '我的收藏',
+    '/files': '我的文件',
+    '/shared': '知识广场',
     '/history': '对话历史',
     '/profile': '个人中心',
   }

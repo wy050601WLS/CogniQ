@@ -12,7 +12,7 @@ class AuditLog(Base):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     username = Column(String(50), nullable=True)
     action = Column(String(50), nullable=False, index=True)  # create/update/delete/login
-    resource_type = Column(String(50), nullable=True)  # user/knowledge_base/document
+    resource_type = Column(String(50), nullable=True)  # user/document
     resource_id = Column(String(36), nullable=True)
     detail = Column(Text, nullable=True)
     ip_address = Column(String(50), nullable=True)

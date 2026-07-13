@@ -68,7 +68,7 @@ async def search_conversations(
 
     return {
         "results": [
-            {"id": c.id, "title": c.title, "knowledge_base_id": c.knowledge_base_id, "updated_at": str(c.updated_at)}
+            {"id": c.id, "title": c.title, "updated_at": str(c.updated_at)}
             for c in conversations
         ],
         "total": len(conversations),

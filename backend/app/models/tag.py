@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Table
 from app.core.database import Base
 
-# 知识库-标签关联表
-kb_tag_table = Table(
-    "kb_tags",
+# 文件-标签关联表
+document_tag_table = Table(
+    "document_tags",
     Base.metadata,
-    Column("knowledge_base_id", String(36), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), primary_key=True),
+    Column("document_id", String(36), ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", String(36), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
 )
 

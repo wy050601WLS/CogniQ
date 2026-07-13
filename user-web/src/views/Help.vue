@@ -202,9 +202,7 @@ onMounted(async () => {
     const { data } = await api.get('/help')
     const iconMap = {
       'getting-started': Setting,
-      'knowledge-base': Collection,
       'chat': ChatDotRound,
-      'favorites': Star,
       'profile': User,
       'troubleshooting': Warning,
       'admin': Setting,

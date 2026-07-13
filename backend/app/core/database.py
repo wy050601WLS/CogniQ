@@ -2,14 +2,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
-# 配置连接池，解决测试环境连接问题
+# 配置连接池
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     pool_size=5,
     max_overflow=10,
     pool_recycle=3600,
-    pool_pre_ping=True,
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

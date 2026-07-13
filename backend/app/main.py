@@ -116,8 +116,9 @@ async def health():
     # 检查数据库连接
     try:
         from app.core.database import engine
+        from sqlalchemy import text
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         checks["services"]["database"] = "ok"
     except Exception as e:
         checks["services"]["database"] = f"error: {type(e).__name__}"

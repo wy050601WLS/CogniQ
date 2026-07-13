@@ -1,10 +1,10 @@
 <template>
-  <div class="docs-page">
+  <div class="files-page">
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>文档管理</span>
-          <span class="total-count">共 {{ documents.length }} 个文档</span>
+          <span>文件管理</span>
+          <span class="total-count">共 {{ files.length }} 个文件</span>
         </div>
       </template>
 
@@ -30,7 +30,7 @@
         <span>加载中...</span>
       </div>
 
-      <el-table v-else :data="filteredDocs" stripe>
+      <el-table v-else :data="filteredFiles" stripe>
         <el-table-column prop="filename" label="文件名">
           <template #default="{ row }">
             <div class="file-name">
@@ -44,10 +44,15 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="file_type" label="类型" width="100" align="center">
+        <el-table-column prop="description" label="描述" min-width="150">
           <template #default="{ row }">
-            <el-tag size="small" :type="getTagType(row.file_type)">
-              {{ row.file_type.toUpperCase() }}
+            <span class="description-text">{{ row.description || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="is_public" label="可见性" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
+              {{ row.is_public ? '公开' : '私有' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -58,8 +63,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="chunk_count" label="分块数" width="100" align="center" />
-        <el-table-column prop="created_at" label="上传时间" width="180">
+        <el-table-column prop="chunk_count" label="分块数" width="80" align="center" />
+        <el-table-column prop="version" label="版本" width="70" align="center" />
+        <el-table-column prop="created_at" label="上传时间" width="160">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
@@ -73,7 +79,7 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!loading && filteredDocs.length === 0" description="暂无文档" />
+      <el-empty v-if="!loading && filteredFiles.length === 0" description="暂无文件" />
     </el-card>
   </div>
 </template>
@@ -82,23 +88,23 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Loading } from '@element-plus/icons-vue'
-import { getAdminDocuments, deleteAdminDocument } from '../api'
+import { getAdminFiles, deleteAdminFile } from '../api'
 
-const documents = ref([])
+const files = ref([])
 const loading = ref(true)
 const searchText = ref('')
 const statusFilter = ref('')
 
-const filteredDocs = computed(() => {
-  let result = documents.value
+const filteredFiles = computed(() => {
+  let result = files.value
 
   if (searchText.value) {
     const keyword = searchText.value.toLowerCase()
-    result = result.filter(doc => doc.filename.toLowerCase().includes(keyword))
+    result = result.filter(file => file.filename.toLowerCase().includes(keyword))
   }
 
   if (statusFilter.value) {
-    result = result.filter(doc => doc.status === statusFilter.value)
+    result = result.filter(file => file.status === statusFilter.value)
   }
 
   return result
@@ -111,11 +117,11 @@ onMounted(async () => {
 async function loadData() {
   loading.value = true
   try {
-    const { data } = await getAdminDocuments()
-    documents.value = data || []
+    const { data } = await getAdminFiles()
+    files.value = data || []
   } catch (e) {
-    console.error('加载文档失败:', e)
-    ElMessage.error('加载文档列表失败')
+    console.error('加载文件失败:', e)
+    ElMessage.error('加载文件列表失败')
   } finally {
     loading.value = false
   }
@@ -144,18 +150,6 @@ function getFileTypeClass(type) {
   return classes[type] || ''
 }
 
-function getTagType(type) {
-  const types = {
-    pdf: 'danger',
-    docx: '',
-    doc: '',
-    md: 'success',
-    txt: 'info',
-    html: 'warning'
-  }
-  return types[type] || 'info'
-}
-
 function getStatusType(status) {
   const types = {
     completed: 'success',
@@ -176,10 +170,10 @@ function getStatusText(status) {
   return texts[status] || status
 }
 
-async function handleDelete(doc) {
+async function handleDelete(file) {
   try {
     await ElMessageBox.confirm(
-      `确定删除文档「${doc.filename}」？此操作将删除相关向量数据，且不可恢复。`,
+      `确定删除文件「${file.filename}」？此操作将删除相关向量数据，且不可恢复。`,
       '确认删除',
       {
         confirmButtonText: '删除',
@@ -187,8 +181,8 @@ async function handleDelete(doc) {
         type: 'warning'
       }
     )
-    await deleteAdminDocument(doc.id)
-    documents.value = documents.value.filter(d => d.id !== doc.id)
+    await deleteAdminFile(file.id)
+    files.value = files.value.filter(f => f.id !== file.id)
     ElMessage.success('删除成功')
   } catch (e) {
     if (e !== 'cancel') {
@@ -253,5 +247,15 @@ async function handleDelete(doc) {
   font-size: 12px;
   color: #94a3b8;
   margin-top: 2px;
+}
+
+.description-text {
+  font-size: 13px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  display: block;
 }
 </style>

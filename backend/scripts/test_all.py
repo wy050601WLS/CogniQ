@@ -181,25 +181,6 @@ def main():
 
     print()
 
-    # ==================== 收藏模块 ====================
-    print("【收藏模块】")
-
-    def test_add_fav():
-        r = client.post("/api/favorites", json={
-            "knowledge_base_id": "dab30740-a3ed-4609-a073-978a6b2cf4d8"
-        })
-        return f"状态码: {r.status_code}"
-
-    test("添加收藏", test_add_fav)
-
-    def test_list_favs():
-        r = client.get("/api/favorites")
-        return f"共 {len(r.json())} 个收藏"
-
-    test("获取收藏列表", test_list_favs)
-
-    print()
-
     # ==================== 反馈模块 ====================
     print("【反馈模块】")
 
