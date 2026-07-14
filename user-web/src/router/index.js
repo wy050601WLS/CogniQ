@@ -1,80 +1,114 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
+
+function lazyLoad(view) {
+  return () => import(`../views/${view}.vue`).catch((err) => {
+    console.error('页面加载失败:', view, err)
+    return import('../views/NotFound.vue')
+  })
+}
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../views/Home.vue'),
+    component: lazyLoad('Home'),
+    meta: { title: '首页' },
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/Login.vue'),
+    component: lazyLoad('Login'),
+    meta: { title: '登录' },
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../views/Register.vue'),
+    component: lazyLoad('Register'),
+    meta: { title: '注册' },
   },
   {
     path: '/chat',
     name: 'Chat',
-    component: () => import('../views/Chat.vue'),
-    meta: { requiresAuth: true },
+    component: lazyLoad('Chat'),
+    meta: { requiresAuth: true, title: '智能问答' },
   },
   {
     path: '/files',
     name: 'Files',
-    component: () => import('../views/Files.vue'),
-    meta: { requiresAuth: true },
+    component: lazyLoad('Files'),
+    meta: { requiresAuth: true, title: '我的文件' },
   },
   {
     path: '/files/:id',
     name: 'FileDetail',
-    component: () => import('../views/FileDetail.vue'),
-    meta: { requiresAuth: true },
+    component: lazyLoad('FileDetail'),
+    meta: { requiresAuth: true, title: '文件详情' },
   },
   {
     path: '/history',
     name: 'History',
-    component: () => import('../views/History.vue'),
-    meta: { requiresAuth: true },
+    component: lazyLoad('History'),
+    meta: { requiresAuth: true, title: '对话历史' },
   },
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('../views/Profile.vue'),
-    meta: { requiresAuth: true },
+    component: lazyLoad('Profile'),
+    meta: { requiresAuth: true, title: '个人中心' },
   },
   {
     path: '/shared',
     name: 'Shared',
-    component: () => import('../views/Shared.vue'),
+    component: lazyLoad('Shared'),
+    meta: { title: '知识广场' },
   },
   {
     path: '/help',
     name: 'Help',
-    component: () => import('../views/Help.vue'),
+    component: lazyLoad('Help'),
+    meta: { title: '帮助中心' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('../views/NotFound.vue'),
+    component: lazyLoad('NotFound'),
+    meta: { title: '页面未找到' },
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return { top: 0 }
+  },
 })
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    ElMessage.info('请先登录后再使用该功能')
+    next({ path: '/login', query: { redirect: to.fullPath } })
+  } else if ((to.path === '/login' || to.path === '/register') && token) {
+    next('/')
   } else {
     next()
+  }
+})
+
+// 动态标题
+router.afterEach((to) => {
+  document.title = to.meta.title ? `${to.meta.title} - 知识问答系统` : '知识问答系统'
+})
+
+// 懒加载失败重试
+router.onError((error) => {
+  if (/Loading chunk \d+ failed/i.test(error.message)) {
+    ElMessage.error('页面加载失败，正在刷新...')
+    window.location.reload()
   }
 })
 

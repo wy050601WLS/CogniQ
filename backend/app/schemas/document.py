@@ -26,7 +26,7 @@ class DocumentResponse(BaseModel):
     copy_count: int
     view_count: int
     version: int
-    is_copied: bool = False
+    is_reference: bool = False
     created_at: datetime
     updated_at: datetime
     tags: List[TagInfo] = []

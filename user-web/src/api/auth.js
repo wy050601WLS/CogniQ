@@ -6,6 +6,9 @@ export const login = (username, password) =>
 export const register = (username, email, password, nickname) =>
   api.post('/auth/register', { username, email, password, nickname })
 
+export const refreshToken = (refresh_token) =>
+  api.post('/auth/refresh', { refresh_token })
+
 export const getMe = () => api.get('/auth/me')
 
 export const updateProfile = (data) => api.put('/auth/me', data)

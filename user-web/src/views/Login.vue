@@ -50,12 +50,13 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const formRef = ref(null)
 const loading = ref(false)
@@ -88,7 +89,8 @@ async function handleLogin() {
   try {
     await authStore.doLogin(form.value.username, form.value.password)
     ElMessage.success('登录成功')
-    router.push('/')
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
   } catch (e) {
     // 错误已在拦截器中处理
   } finally {
@@ -160,5 +162,26 @@ async function handleLogin() {
 
 .login-footer a:hover {
   text-decoration: underline;
+}
+
+/* 深色模式 */
+.dark .login-page {
+  background: #0f172a;
+}
+
+.dark .login-card {
+  background: #1e293b;
+}
+
+.dark .login-header h1 {
+  color: #e2e8f0;
+}
+
+.dark .login-header p {
+  color: #94a3b8;
+}
+
+.dark .login-footer {
+  color: #94a3b8;
 }
 </style>

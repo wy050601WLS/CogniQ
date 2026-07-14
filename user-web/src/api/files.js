@@ -50,6 +50,9 @@ export const chatStream = async (data, onChunk, onSources, onEnd) => {
     throw new Error('未登录')
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 120000)
+
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -58,13 +61,11 @@ export const chatStream = async (data, onChunk, onSources, onEnd) => {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ ...data, stream: true }),
+      signal: controller.signal,
     })
 
     if (!response.ok) {
       if (response.status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refresh_token')
-        window.location.href = '/login'
         throw new Error('登录已过期，请重新登录')
       }
       throw new Error(`请求失败: ${response.status}`)
@@ -90,7 +91,7 @@ export const chatStream = async (data, onChunk, onSources, onEnd) => {
             if (event.type === 'sources') onSources(event.documents)
             if (event.type === 'end') onEnd(event)
           } catch (e) {
-            // 忽略解析错误
+            console.warn('SSE parse error:', e)
           }
         }
       }
@@ -104,14 +105,16 @@ export const chatStream = async (data, onChunk, onSources, onEnd) => {
         if (event.type === 'sources') onSources(event.documents)
         if (event.type === 'end') onEnd(event)
       } catch (e) {
-        // 忽略解析错误
+        console.warn('SSE parse error:', e)
       }
     }
   } catch (error) {
-    if (error.message === '未登录') {
-      window.location.href = '/login'
+    if (error.name === 'AbortError') {
+      throw new Error('回答超时，请稍后重试')
     }
     throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

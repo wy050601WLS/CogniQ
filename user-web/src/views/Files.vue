@@ -16,10 +16,24 @@
         clearable
         style="width: 250px"
       />
-      <el-select v-model="statusFilter" placeholder="状态筛选" clearable style="width: 120px">
-        <el-option label="已完成" value="completed" />
-        <el-option label="处理中" value="processing" />
-        <el-option label="失败" value="error" />
+      <el-select v-model="fileTypeFilter" placeholder="文件格式" clearable style="width: 120px">
+        <el-option v-for="t in fileTypeOptions" :key="t" :label="t.toUpperCase()" :value="t" />
+      </el-select>
+      <el-select v-model="uploaderFilter" placeholder="上传人" clearable style="width: 140px">
+        <el-option v-for="u in uploaderOptions" :key="u" :label="u" :value="u" />
+      </el-select>
+      <el-select v-model="tagFilter" placeholder="标签" clearable style="width: 140px">
+        <el-option v-for="t in tagOptions" :key="t" :label="t" :value="t" />
+      </el-select>
+      <el-select v-model="sortBy" placeholder="排序方式" style="width: 160px">
+        <el-option label="最新上传" value="newest_desc" />
+        <el-option label="最早上传" value="newest_asc" />
+        <el-option label="热度最高" value="hot_desc" />
+        <el-option label="热度最低" value="hot_asc" />
+        <el-option label="查看最多" value="views_desc" />
+        <el-option label="查看最少" value="views_asc" />
+        <el-option label="文件最大" value="size_desc" />
+        <el-option label="文件最小" value="size_asc" />
       </el-select>
     </div>
 
@@ -59,10 +73,10 @@
           <el-button text size="small" @click="openFile(file)">
             <el-icon><View /></el-icon> 查看
           </el-button>
-          <el-button v-if="file.owner_id === currentUserId && !file.is_copied" text size="small" @click="editFile(file)">
+          <el-button v-if="file.owner_id === currentUserId" text size="small" @click="editFile(file)">
             <el-icon><Edit /></el-icon> 编辑
           </el-button>
-          <el-button v-if="file.owner_id === currentUserId && !file.is_copied" text type="danger" size="small" @click="handleDelete(file)">
+          <el-button v-if="file.owner_id === currentUserId || file.is_reference" text type="danger" size="small" @click="handleDelete(file)">
             <el-icon><Delete /></el-icon> 删除
           </el-button>
         </div>
@@ -97,8 +111,8 @@
 
     <!-- 编辑对话框 -->
     <el-dialog v-model="showEditDialog" title="编辑文件信息" width="500px">
-      <el-form :model="editForm" label-width="80px">
-        <el-form-item label="文件名">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="80px">
+        <el-form-item label="文件名" prop="filename">
           <el-input v-model="editForm.filename" />
         </el-form-item>
         <el-form-item label="描述">
@@ -123,6 +137,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Document, View, Edit, Delete, Loading, Search } from '@element-plus/icons-vue'
 import { getMyFiles, uploadFile, updateFile, deleteFile } from '../api/files'
 import { useAuthStore } from '../stores/auth'
+import { formatFileSize, getFileTypeClass, formatDate } from '../utils/format'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -131,7 +146,28 @@ const currentUserId = computed(() => authStore.user?.id)
 const files = ref([])
 const loading = ref(true)
 const searchText = ref('')
-const statusFilter = ref('')
+const fileTypeFilter = ref('')
+const uploaderFilter = ref('')
+const tagFilter = ref('')
+const sortBy = ref('newest_desc')
+
+const fileTypeOptions = computed(() => {
+  const types = new Set(files.value.map(f => f.file_type))
+  return [...types].sort()
+})
+
+const uploaderOptions = computed(() => {
+  const names = new Set(files.value.map(f => f.uploader_name || '未知'))
+  return [...names].sort()
+})
+
+const tagOptions = computed(() => {
+  const tags = new Set()
+  files.value.forEach(f => {
+    if (f.tags) f.tags.forEach(t => tags.add(t.name))
+  })
+  return [...tags].sort()
+})
 
 // 上传相关
 const showUploadDialog = ref(false)
@@ -141,7 +177,14 @@ const uploading = ref(false)
 
 // 编辑相关
 const showEditDialog = ref(false)
+const editFormRef = ref(null)
 const editForm = ref({ filename: '', description: '', is_public: false })
+const editRules = {
+  filename: [
+    { required: true, message: '请输入文件名', trigger: 'blur' },
+    { max: 255, message: '文件名不超过 255 个字符', trigger: 'blur' },
+  ],
+}
 const editing = ref(false)
 const editingFile = ref(null)
 
@@ -153,8 +196,30 @@ const filteredFiles = computed(() => {
     result = result.filter(file => file.filename.toLowerCase().includes(keyword))
   }
 
-  if (statusFilter.value) {
-    result = result.filter(file => file.status === statusFilter.value)
+  if (fileTypeFilter.value) {
+    result = result.filter(file => file.file_type === fileTypeFilter.value)
+  }
+
+  if (uploaderFilter.value) {
+    result = result.filter(file => (file.uploader_name || '未知') === uploaderFilter.value)
+  }
+
+  if (tagFilter.value) {
+    result = result.filter(file => file.tags && file.tags.some(t => t.name === tagFilter.value))
+  }
+
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('_')
+    const desc = order === 'desc' ? 1 : -1
+    result = [...result].sort((a, b) => {
+      switch (field) {
+        case 'newest': return desc * (new Date(b.updated_at) - new Date(a.updated_at))
+        case 'hot': return desc * ((b.copy_count || 0) - (a.copy_count || 0))
+        case 'views': return desc * ((b.view_count || 0) - (a.view_count || 0))
+        case 'size': return desc * ((b.file_size || 0) - (a.file_size || 0))
+        default: return 0
+      }
+    })
   }
 
   return result
@@ -175,29 +240,6 @@ async function loadData() {
   } finally {
     loading.value = false
   }
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-function getFileTypeClass(type) {
-  const classes = {
-    pdf: 'type-pdf',
-    docx: 'type-word',
-    doc: 'type-word',
-    md: 'type-md',
-    txt: 'type-txt',
-    html: 'type-html'
-  }
-  return classes[type] || ''
 }
 
 function openFile(file) {
@@ -224,6 +266,21 @@ async function handleUpload() {
     return
   }
 
+  const MAX_SIZE = 50 * 1024 * 1024
+  const ALLOWED_TYPES = ['.pdf', '.docx', '.doc', '.md', '.txt', '.html', '.htm']
+
+  for (const file of uploadFileList.value) {
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    if (!ALLOWED_TYPES.includes(ext)) {
+      ElMessage.error(`"${file.name}" 不支持的文件格式`)
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      ElMessage.error(`"${file.name}" 文件大小不能超过 50MB`)
+      return
+    }
+  }
+
   uploading.value = true
   try {
     for (const file of uploadFileList.value) {
@@ -243,6 +300,13 @@ async function handleUpload() {
 
 async function handleEdit() {
   if (!editingFile.value) return
+  if (editFormRef.value) {
+    try {
+      await editFormRef.value.validate()
+    } catch {
+      return
+    }
+  }
 
   editing.value = true
   try {
@@ -292,6 +356,7 @@ async function handleDelete(file) {
   display: flex;
   gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .loading-state {
@@ -393,5 +458,34 @@ async function handleDelete(file) {
 .file-actions {
   display: flex;
   gap: 8px;
+}
+
+/* 深色模式 */
+.dark .file-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .file-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.dark .file-icon {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.dark .file-name {
+  color: #e2e8f0;
+}
+
+.dark .file-desc {
+  color: #94a3b8;
+}
+
+.dark .filter-bar .el-input__wrapper,
+.dark .filter-bar .el-select .el-input__wrapper {
+  background-color: #1e293b;
 }
 </style>

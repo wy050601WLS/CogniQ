@@ -18,12 +18,12 @@
         <template #header>
           <div class="card-header">
             <span>文件信息</span>
-            <div class="card-actions" v-if="file.owner_id === currentUserId && !file.is_copied">
+            <div class="card-actions" v-if="file.owner_id === currentUserId && !file.is_reference">
               <el-button type="primary" size="small" @click="editFile">编辑</el-button>
-              <el-button type="warning" size="small" @click="replaceFile">替换内容</el-button>
+              <el-button type="warning" size="small" @click="handleReplaceFile">替换内容</el-button>
               <el-button type="danger" size="small" @click="handleDelete">删除</el-button>
             </div>
-            <div class="card-actions" v-else-if="file.is_copied">
+            <div class="card-actions" v-else-if="file.is_reference">
               <el-tag type="info" size="small">复制文件 - 无修改权</el-tag>
             </div>
           </div>
@@ -33,11 +33,9 @@
           <el-descriptions-item label="文件类型">{{ file.file_type.toUpperCase() }}</el-descriptions-item>
           <el-descriptions-item label="文件大小">{{ formatFileSize(file.file_size) }}</el-descriptions-item>
           <el-descriptions-item label="版本">v{{ file.version }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(file.status)" size="small">{{ getStatusText(file.status) }}</el-tag>
-          </el-descriptions-item>
+
           <el-descriptions-item label="可见性">
-            <el-switch v-model="file.is_public" @change="togglePublic" :disabled="file.owner_id !== currentUserId || file.is_copied" />
+            <el-switch v-model="file.is_public" @change="togglePublic" :disabled="file.owner_id !== currentUserId || file.is_reference" />
           </el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">{{ file.description || '暂无描述' }}</el-descriptions-item>
           <el-descriptions-item label="上传时间">{{ formatDate(file.created_at) }}</el-descriptions-item>
@@ -53,7 +51,7 @@
         <template #header>
           <div class="card-header">
             <span>标签</span>
-            <el-button v-if="file.owner_id === currentUserId && !file.is_copied" text size="small" @click="showTagDialog = true">
+            <el-button v-if="file.owner_id === currentUserId && !file.is_reference" text size="small" @click="showTagDialog = true">
               <el-icon><Edit /></el-icon> 编辑标签
             </el-button>
           </div>
@@ -117,8 +115,8 @@
 
     <!-- 编辑对话框 -->
     <el-dialog v-model="showEditDialog" title="编辑文件信息" width="500px">
-      <el-form :model="editForm" label-width="80px">
-        <el-form-item label="文件名">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="80px">
+        <el-form-item label="文件名" prop="filename">
           <el-input v-model="editForm.filename" />
         </el-form-item>
         <el-form-item label="描述">
@@ -151,6 +149,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Loading, Edit, Refresh } from '@element-plus/icons-vue'
 import { getFile, updateFile, replaceFile, deleteFile, getFileVersions, rollbackVersion, previewFile } from '../api/files'
 import { useAuthStore } from '../stores/auth'
+import { formatFileSize, formatDate } from '../utils/format'
 import api from '../api/index'
 
 const route = useRoute()
@@ -166,7 +165,14 @@ const versions = ref([])
 
 // 编辑相关
 const showEditDialog = ref(false)
+const editFormRef = ref(null)
 const editForm = ref({ filename: '', description: '' })
+const editRules = {
+  filename: [
+    { required: true, message: '请输入文件名', trigger: 'blur' },
+    { max: 255, message: '文件名不超过 255 个字符', trigger: 'blur' },
+  ],
+}
 
 // 标签相关
 const showTagDialog = ref(false)
@@ -223,27 +229,6 @@ async function loadPreview() {
   }
 }
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-function getStatusType(status) {
-  const types = { completed: 'success', processing: 'warning', pending: 'info', error: 'danger' }
-  return types[status] || 'info'
-}
-
-function getStatusText(status) {
-  const texts = { completed: '已完成', processing: '处理中', pending: '等待中', error: '失败' }
-  return texts[status] || status
-}
-
 function editFile() {
   editForm.value = {
     filename: file.value.filename,
@@ -253,6 +238,13 @@ function editFile() {
 }
 
 async function handleEdit() {
+  if (editFormRef.value) {
+    try {
+      await editFormRef.value.validate()
+    } catch {
+      return
+    }
+  }
   try {
     await updateFile(file.value.id, editForm.value)
     ElMessage.success('保存成功')
@@ -273,16 +265,29 @@ async function togglePublic() {
   }
 }
 
-function replaceFile() {
+function handleReplaceFile() {
+  const MAX_SIZE = 50 * 1024 * 1024
+  const ALLOWED_TYPES = ['.pdf', '.docx', '.doc', '.md', '.txt', '.html', '.htm']
+
   const input = document.createElement('input')
   input.type = 'file'
-  input.accept = '.pdf,.docx,.doc,.md,.txt,.html,.htm'
+  input.accept = ALLOWED_TYPES.join(',')
   input.onchange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+    const selectedFile = e.target.files[0]
+    if (!selectedFile) return
+
+    const ext = '.' + selectedFile.name.split('.').pop().toLowerCase()
+    if (!ALLOWED_TYPES.includes(ext)) {
+      ElMessage.error('不支持的文件格式')
+      return
+    }
+    if (selectedFile.size > MAX_SIZE) {
+      ElMessage.error('文件大小不能超过 50MB')
+      return
+    }
 
     try {
-      await replaceFile(file.value.id, file)
+      await replaceFile(file.value.id, selectedFile)
       ElMessage.success('文件替换成功')
       await loadFile()
       await loadVersions()
@@ -442,5 +447,49 @@ async function handleRollback(version) {
 .version-size {
   color: #94a3b8;
   font-size: 12px;
+}
+
+/* 深色模式 */
+.dark .file-detail-page {
+  background: #0f172a;
+}
+
+.dark .el-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .file-title {
+  color: #e2e8f0;
+}
+
+.dark .el-descriptions__label {
+  color: #94a3b8;
+}
+
+.dark .el-descriptions__content {
+  color: #cbd5e1;
+}
+
+.dark .section-title {
+  color: #e2e8f0;
+}
+
+.dark .version-time {
+  color: #94a3b8;
+}
+
+.dark .version-filename {
+  color: #e2e8f0;
+}
+
+.dark .preview-content {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+.dark .version-item {
+  border-bottom-color: #334155;
 }
 </style>

@@ -1,6 +1,7 @@
 # 知识问答系统 - 项目结构详解
 
 > 本文档详细标注了项目中每个文件的作用和职责。
+> 项目已从"知识库模式"改为"直接文件模式"，用户直接管理文件，支持引用机制共享。
 
 ---
 
@@ -73,20 +74,16 @@ backend/
 │   │   │                         - PUT /me 更新个人信息
 │   │   │                         - PUT /password 修改密码
 │   │   │                         - POST /avatar 上传头像
-│   │   ├── knowledge_base.py   #   知识库模块
-│   │   │                         - GET /my 我的知识库
-│   │   │                         - GET /marketplace 知识库广场
-│   │   │                         - POST / 创建知识库
-│   │   │                         - GET /{id} 知识库详情
-│   │   │                         - PUT /{id} 更新知识库
-│   │   │                         - DELETE /{id} 删除知识库
-│   │   │                         - POST /{id}/copy 复制知识库
-│   │   ├── document.py         #   文档模块
-│   │   │                         - GET /knowledge-bases/{kb_id}/documents 文档列表
-│   │   │                         - POST /knowledge-bases/{kb_id}/documents/upload 上传文档
-│   │   │                         - GET /documents/{id} 文档详情
-│   │   │                         - DELETE /documents/{id} 删除文档
-│   │   ├── chat.py             #   聊天模块
+│   │   ├── document.py         #   文件模块
+│   │   │                         - GET / 我的文件列表
+│   │   │                         - POST /upload 上传文件
+│   │   │                         - GET /{id} 文件详情
+│   │   │                         - PUT /{id} 更新文件
+│   │   │                         - DELETE /{id} 删除文件/引用移除
+│   │   │                         - PUT /{id}/replace 替换文件
+│   │   │                         - GET /shared 公开文件列表
+│   │   │                         - POST /{id}/add 添加引用
+│   │   ├── chat.py             #   聊天模块（自动匹配文件，无需选择知识库）
 │   │   │                         - GET /conversations 对话列表
 │   │   │                         - POST /conversations 创建对话
 │   │   │                         - GET /conversations/{id}/messages 消息历史
@@ -149,7 +146,7 @@ backend/
 │   │
 │   ├── services/               # 💼 业务逻辑层
 │   │   ├── __init__.py
-│   │   ├── chat.py             #   RAG 问答服务（核心）
+│   │   ├── chat.py             #   RAG 问答服务（核心，自动匹配文件）
 │   │   │                         - rag_chat() RAG 问答主函数
 │   │   │                         - check_sensitive_content() 敏感词检查
 │   │   │                         - filter_response() 输出过滤
@@ -167,7 +164,7 @@ backend/
 │   │   │                         - stream_chat() 流式聊天
 │   │   │                         - chat() 非流式聊天
 │   │   │                         - list_models() 列出模型
-│   │   ├── vector_store.py     #   向量存储服务
+│   │   ├── vector_store.py     #   向量存储服务（每个文件一个 collection）
 │   │   │                         - VectorStoreService 类
 │   │   │                         - get_or_create_collection() 获取/创建集合
 │   │   │                         - add_documents() 添加文档
@@ -177,19 +174,12 @@ backend/
 │   │   │                         - EmbeddingService 类
 │   │   │                         - embed_documents() 批量嵌入
 │   │   │                         - embed_query() 单条嵌入
-│   │   ├── knowledge_base.py   #   知识库业务逻辑
-│   │   │                         - KnowledgeBaseService 类
-│   │   │                         - list_by_owner() 用户知识库列表
-│   │   │                         - list_public() 公开知识库列表
-│   │   │                         - create() 创建知识库
-│   │   │                         - update() 更新知识库
-│   │   │                         - delete() 删除知识库
-│   │   │                         - copy() 复制知识库
-│   │   ├── document.py         #   文档业务逻辑
+│   │   ├── document.py         #   文件业务逻辑
 │   │   │                         - DocumentService 类
-│   │   │                         - list_by_kb() 文档列表
+│   │   │                         - list_my_files() 用户文件列表
+│   │   │                         - add_file() 添加文件引用
 │   │   │                         - upload_and_process() 上传并处理
-│   │   │                         - delete() 删除文档
+│   │   │                         - delete() 删除文件
 │   │   ├── settings.py         #   设置业务逻辑
 │   │   │                         - SettingsService 类
 │   │   │                         - get_settings() 获取设置
@@ -202,14 +192,14 @@ backend/
 │   │   ├── user.py             #   用户模型
 │   │   │                         - id, username, email, password_hash
 │   │   │                         - nickname, avatar, role, status
-│   │   ├── knowledge_base.py   #   知识库模型
-│   │   │                         - id, owner_id, name, description
-│   │   │                         - is_public, is_official, allow_copy
-│   │   │                         - chunk_size, chunk_overlap, doc_count
-│   │   ├── document.py         #   文档模型
-│   │   │                         - id, knowledge_base_id, filename
-│   │   │                         - file_type, file_size, file_path
-│   │   │                         - status, error_message, chunk_count
+│   │   ├── document.py         #   文件表模型
+│   │   │                         - id, owner_id, filename, file_type
+│   │   │                         - file_size, file_path, is_public
+│   │   │                         - version, status, error_message
+│   │   │                         - chunk_count, created_at, updated_at
+│   │   ├── user_file.py        #   用户文件引用表
+│   │   │                         - id, user_id, file_id, added_at
+│   │   │                         - 用于"知识广场"添加引用模式
 │   │   ├── conversation.py     #   对话模型
 │   │   │                         - Conversation: id, user_id, knowledge_base_id, title
 │   │   │                         - Message: id, conversation_id, role, content, sources
@@ -298,13 +288,12 @@ user-web/
 │   │                             - / 首页
 │   │                             - /login 登录
 │   │                             - /register 注册
+│   │                             - /files 我的文件
+│   │                             - /files/:id 文件详情
+│   │                             - /shared 知识广场
 │   │                             - /chat 智能问答
-│   │                             - /my-kb 我的知识库
-│   │                             - /kb/:id 知识库详情
-│   │                             - /favorites 收藏
 │   │                             - /history 对话历史
 │   │                             - /profile 个人中心
-│   │                             - /marketplace 知识库广场
 │   │                             - /help 帮助中心
 │   │                             - /:pathMatch(.*)* 404页面
 │   │
@@ -326,42 +315,38 @@ user-web/
 │   │   │                         - login(), register(), getMe()
 │   │   │                         - updateProfile(), changePassword()
 │   │   │                         - uploadAvatar()
-│   │   └── knowledgeBase.js    #   知识库相关 API
-│   │                             - getMarketplace(), getMyKnowledgeBases()
-│   │                             - createKnowledgeBase(), deleteKnowledgeBase()
-│   │                             - getDocuments(), uploadDocument()
+│   │   ├── files.js            #   文件相关 API
+│   │   │                         - getMyFiles(), getSharedFiles()
+│   │   │                         - uploadFile(), deleteFile(), updateFile()
+│   │   │                         - addFileReference(), replaceFile()
+│   │   └── chat.js             #   聊天相关 API
 │   │                             - getConversations(), createConversation()
 │   │                             - chatStream() 流式聊天
-│   │                             - getFavorites(), addFavorite()
-│   │                             - submitFeedback()
 │   │
 │   ├── views/                  # 📄 页面组件
 │   │   ├── Home.vue            #   首页
 │   │   │                         - 统计概览
-│   │   │                         - 推荐知识库
 │   │   │                         - 快捷操作入口
 │   │   ├── Login.vue           #   登录页
 │   │   ├── Register.vue        #   注册页
-│   │   ├── Chat.vue            #   智能问答页（核心）
+│   │   ├── Files.vue           #   我的文件页
+│   │   │                         - 文件列表
+│   │   │                         - 筛选排序功能
+│   │   │                         - 文件上传
+│   │   ├── FileDetail.vue      #   文件详情页
+│   │   │                         - 文件预览
+│   │   │                         - 标签管理
+│   │   │                         - 版本历史
+│   │   │                         - 文件删除/替换
+│   │   ├── Shared.vue          #   知识广场页（添加引用模式）
+│   │   │                         - 公开文件列表
+│   │   │                         - 搜索筛选
+│   │   │                         - 添加引用
+│   │   ├── Chat.vue            #   智能问答页（核心，自动匹配文件）
 │   │   │                         - 左侧对话列表
-│   │   │                         - 知识库选择
 │   │   │                         - 消息展示（支持 Markdown）
 │   │   │                         - 流式输入框
 │   │   │                         - 来源引用展示
-│   │   ├── MyKnowledgeBases.vue #  我的知识库页
-│   │   │                         - 知识库列表
-│   │   │                         - 创建知识库弹窗
-│   │   ├── KnowledgeBaseDetail.vue # 知识库详情页
-│   │   │                         - 文档列表
-│   │   │                         - 文档上传
-│   │   │                         - 文档删除
-│   │   ├── Marketplace.vue     #   知识库广场页
-│   │   │                         - 公开知识库列表
-│   │   │                         - 搜索筛选
-│   │   │                         - 复制知识库
-│   │   ├── Favorites.vue       #   收藏页
-│   │   │                         - 收藏列表
-│   │   │                         - 取消收藏
 │   │   ├── History.vue         #   对话历史页
 │   │   │                         - 对话列表
 │   │   │                         - 搜索对话
@@ -375,6 +360,12 @@ user-web/
 │   │   │                         - 搜索帮助
 │   │   │                         - 详情弹窗
 │   │   └── NotFound.vue        #   404 页面
+│   │
+│   ├── utils/                   # 🛠️ 工具函数
+│   │   └── format.js            #   公共工具函数
+│   │                             - formatFileSize() 文件大小格式化
+│   │                             - getFileTypeClass() 文件类型样式类
+│   │                             - formatDate() 日期格式化
 │   │
 │   └── styles/                 # 🎨 样式文件
 │       └── global.css          #   全局样式
@@ -481,21 +472,20 @@ admin-web/
 | `config.py` | 配置管理，读取环境变量 | ~65 |
 | `security.py` | JWT 和密码安全 | ~60 |
 | `database.py` | 数据库连接配置 | ~35 |
-| `chat.py` (services) | RAG 问答核心逻辑 | ~220 |
-| `vector_store.py` | ChromaDB 向量存储 | ~95 |
+| `chat.py` (services) | RAG 问答核心逻辑（自动匹配文件） | ~220 |
+| `vector_store.py` | ChromaDB 向量存储（每个文件一个 collection） | ~95 |
 | `llm.py` | Ollama LLM 服务封装 | ~75 |
 | `chat_service.py` | 聊天业务逻辑 | ~300 |
-| `knowledge_base.py` (services) | 知识库业务逻辑 | ~175 |
-| `document.py` (services) | 文档处理业务逻辑 | ~170 |
+| `document.py` (services) | 文件业务逻辑（含引用模式） | ~170 |
 
 ### 5.2 前端核心文件
 
 | 文件 | 作用 | 代码行数 |
 |------|------|----------|
-| `Chat.vue` | 智能问答页面（核心） | ~680 |
+| `Chat.vue` | 智能问答页面（核心，自动匹配文件） | ~680 |
 | `App.vue` (user-web) | 用户端根组件 | ~500 |
 | `App.vue` (admin-web) | 管理端根组件 | ~200 |
-| `knowledgeBase.js` | API 调用层 | ~110 |
+| `files.js` (api) | 文件相关 API 调用 | ~110 |
 | `auth.js` (stores) | 认证状态管理 | ~60 |
 
 ---

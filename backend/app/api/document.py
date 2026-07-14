@@ -80,6 +80,8 @@ async def list_my_files(
         user_map = {}
 
     # 构建响应数据
+    owned_set = set(owned_ids)
+    ref_set = set(ref_ids)
     response_data = []
     for doc in docs:
         doc_dict = {
@@ -96,7 +98,7 @@ async def list_my_files(
             "copy_count": doc.copy_count,
             "view_count": doc.view_count,
             "version": doc.version,
-            "is_copied": doc.is_copied,
+            "is_reference": doc.id in ref_set and doc.id not in owned_set,
             "created_at": doc.created_at,
             "updated_at": doc.updated_at,
             "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in doc.tags],

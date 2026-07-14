@@ -223,4 +223,39 @@ async function handleDelete(conv) {
 .empty-state {
   padding: 60px 0;
 }
+
+/* 深色模式 */
+.dark .history-page {
+  background: #0f172a;
+}
+
+.dark .conv-list {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .conv-item {
+  border-bottom-color: #334155;
+}
+
+.dark .conv-item:hover {
+  background: #334155;
+}
+
+.dark .conv-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-left-color: #3b82f6;
+}
+
+.dark .conv-title {
+  color: #e2e8f0;
+}
+
+.dark .conv-preview {
+  color: #94a3b8;
+}
+
+.dark .conv-time {
+  color: #64748b;
+}
 </style>

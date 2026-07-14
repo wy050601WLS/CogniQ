@@ -115,3 +115,153 @@ a {
 .dark .page-content {
   background: #0f172a;
 }
+
+/* Element Plus 深色模式 CSS 变量 */
+.dark {
+  --el-bg-color: #1e293b;
+  --el-bg-color-overlay: #1e293b;
+  --el-bg-color-page: #0f172a;
+  --el-text-color-primary: #e2e8f0;
+  --el-text-color-regular: #cbd5e1;
+  --el-text-color-secondary: #94a3b8;
+  --el-text-color-placeholder: #64748b;
+  --el-border-color: #334155;
+  --el-border-color-light: #334155;
+  --el-border-color-lighter: #475569;
+  --el-fill-color-blank: #1e293b;
+  --el-fill-color-light: #334155;
+  --el-fill-color-lighter: #475569;
+  --el-mask-color: rgba(15, 23, 42, 0.8);
+}
+
+.dark .el-dialog {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .el-dialog__title {
+  color: #e2e8f0;
+}
+
+.dark .el-dialog__body {
+  color: #cbd5e1;
+}
+
+.dark .el-form-item__label {
+  color: #cbd5e1;
+}
+
+.dark .el-select-dropdown {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .el-select-dropdown__item {
+  color: #cbd5e1;
+}
+
+.dark .el-select-dropdown__item.hover,
+.dark .el-select-dropdown__item:hover {
+  background-color: #334155;
+}
+
+.dark .el-select-dropdown__item.is-selected {
+  color: #3b82f6;
+}
+
+.dark .el-popper.is-light {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .el-empty__description p {
+  color: #94a3b8;
+}
+
+.dark .el-table {
+  --el-table-bg-color: #1e293b;
+  --el-table-tr-bg-color: #1e293b;
+  --el-table-header-bg-color: #0f172a;
+  --el-table-text-color: #cbd5e1;
+  --el-table-header-text-color: #94a3b8;
+  --el-table-border-color: #334155;
+}
+
+.dark .el-tag {
+  --el-tag-bg-color: #334155;
+  --el-tag-border-color: #475569;
+}
+
+.dark .el-menu {
+  background-color: #1e293b;
+}
+
+.dark .el-descriptions {
+  --el-descriptions-item-bordered-label-background: #0f172a;
+}
+
+.dark .el-descriptions__label {
+  color: #94a3b8;
+}
+
+.dark .el-descriptions__content {
+  color: #cbd5e1;
+}
+
+.dark .el-timeline-item__content {
+  color: #cbd5e1;
+}
+
+.dark .el-timeline-item__timestamp {
+  color: #64748b;
+}
+
+.dark .el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: #94a3b8;
+  --el-pagination-button-bg-color: #334155;
+}
+
+.dark .el-upload-dragger {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+.dark .el-upload-dragger:hover {
+  border-color: #3b82f6;
+}
+
+.dark .el-switch.is-checked .el-switch__core {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.dark .el-message-box {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .el-message-box__title {
+  color: #e2e8f0;
+}
+
+.dark .el-message-box__message {
+  color: #cbd5e1;
+}
+
+/* 平滑过渡 */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* 排除不需要过渡的高频更新元素 */
+.chat-messages,
+.message-text,
+.el-loading-spinner,
+.el-loading-mask {
+  transition: none !important;
+}

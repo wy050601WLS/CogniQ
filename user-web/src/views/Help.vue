@@ -533,4 +533,49 @@ function renderMarkdown(content) {
 .slide-fade-leave-to {
   opacity: 0;
 }
+
+/* 深色模式 */
+.dark .category-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .category-card h3 {
+  color: #e2e8f0;
+}
+
+.dark .category-count {
+  color: #94a3b8;
+}
+
+.dark .item-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .item-card-header h3 {
+  color: #e2e8f0;
+}
+
+.dark .item-card p {
+  color: #94a3b8;
+}
+
+.dark .detail-content {
+  color: #cbd5e1;
+}
+
+.dark .detail-content :deep(th) {
+  background: #334155;
+}
+
+.dark .detail-content :deep(code) {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.dark .search-input .el-input__wrapper {
+  background-color: #1e293b;
+  box-shadow: 0 0 0 1px #475569 inset;
+}
 </style>

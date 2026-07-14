@@ -106,7 +106,7 @@ import {
   ChatDotRound, Grid, Document, User,
   Clock, Loading, Upload, View, CopyDocument
 } from '@element-plus/icons-vue'
-import { getSharedFiles } from '../api/files'
+import { getSharedFiles, getMyFiles } from '../api/files'
 import { getConversations } from '../api/files'
 
 const router = useRouter()
@@ -126,6 +126,10 @@ onMounted(async () => {
     if (token) {
       const convRes = await getConversations().catch(() => ({ data: [] }))
       stats.value.convCount = Array.isArray(convRes.data) ? convRes.data.length : 0
+
+      // 加载文件统计
+      const myFilesRes = await getMyFiles().catch(() => ({ data: [] }))
+      stats.value.fileCount = Array.isArray(myFilesRes.data) ? myFilesRes.data.length : 0
     }
   } catch (e) {
     console.error('加载首页数据失败:', e)
@@ -370,5 +374,67 @@ function handleViewFile(file) {
   gap: 8px;
   padding: 40px 0;
   color: #94a3b8;
+}
+
+/* 深色模式 */
+.dark .welcome-card {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: #e2e8f0;
+}
+
+.dark .welcome-card h2 {
+  color: #e2e8f0;
+}
+
+.dark .welcome-card p {
+  color: #94a3b8;
+}
+
+.dark .stat-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .stat-value {
+  color: #e2e8f0;
+}
+
+.dark .stat-label {
+  color: #94a3b8;
+}
+
+.dark .file-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .file-icon {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.dark .file-card h3 {
+  color: #e2e8f0;
+}
+
+.dark .file-card p {
+  color: #94a3b8;
+}
+
+.dark .file-meta {
+  color: #64748b;
+}
+
+.dark .action-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .action-card span {
+  color: #e2e8f0;
+}
+
+.dark .section-header h2 {
+  color: #e2e8f0;
 }
 </style>

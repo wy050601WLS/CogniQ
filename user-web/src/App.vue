@@ -76,30 +76,6 @@
               <Moon v-else />
             </el-icon>
           </el-button>
-          <el-input
-            v-model="globalSearch"
-            placeholder="搜索文件..."
-            prefix-icon="Search"
-            clearable
-            style="width: 240px"
-            @keyup.enter="handleSearch"
-            @clear="searchResults = []"
-          />
-          <!-- 搜索结果下拉 -->
-          <div v-if="searchResults.length > 0" class="search-dropdown">
-            <div
-              v-for="kb in searchResults"
-              :key="kb.id"
-              class="search-item"
-              @click="handleSearchResult(kb)"
-            >
-              <el-icon><Collection /></el-icon>
-              <div class="search-item-info">
-                <div class="search-item-name">{{ kb.name }}</div>
-                <div class="search-item-desc">{{ kb.description || '暂无描述' }}</div>
-              </div>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -125,24 +101,24 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import {
-  ChatDotRound, HomeFilled, Collection, Grid, Star,
-  Clock, SwitchButton, Search, Top, QuestionFilled, Sunny, Moon
+  ChatDotRound, HomeFilled, Grid, Star,
+  Clock, SwitchButton, Top, QuestionFilled, Sunny, Moon, Document
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
-import { getSharedFiles } from './api/files'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const globalSearch = ref('')
 const pageContentRef = ref(null)
 const showBackTop = ref(false)
-const searchResults = ref([])
 
 const currentTitle = computed(() => {
+  const path = route.path
+  if (path.startsWith('/files/') && route.params.id) return '文件详情'
   const titles = {
     '/chat': '智能问答',
     '/files': '我的文件',
@@ -150,34 +126,12 @@ const currentTitle = computed(() => {
     '/history': '对话历史',
     '/profile': '个人中心',
   }
-  return titles[route.path] || ''
+  return titles[path] || ''
 })
 
-async function handleSearch() {
-  if (!globalSearch.value.trim()) {
-    searchResults.value = []
-    return
-  }
-
-  try {
-    const { data } = await getMarketplace()
-    const keyword = globalSearch.value.toLowerCase()
-    searchResults.value = (data.items || []).filter(kb =>
-      kb.name.toLowerCase().includes(keyword) ||
-      (kb.description && kb.description.toLowerCase().includes(keyword))
-    ).slice(0, 5)
-  } catch (e) {
-    console.error('搜索失败:', e)
-  }
-}
-
-function handleSearchResult(kb) {
-  searchResults.value = []
-  globalSearch.value = ''
-  if (authStore.isLoggedIn) {
-    router.push(`/kb/${kb.id}`)
-  } else {
-    router.push('/login')
+function scrollToTop() {
+  if (pageContentRef.value) {
+    pageContentRef.value.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 
@@ -187,37 +141,27 @@ function handleScroll() {
   }
 }
 
-function scrollToTop() {
-  if (pageContentRef.value) {
-    pageContentRef.value.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-}
-
 onMounted(() => {
   if (pageContentRef.value) {
     pageContentRef.value.addEventListener('scroll', handleScroll)
   }
-  // 点击外部关闭搜索下拉
-  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   if (pageContentRef.value) {
     pageContentRef.value.removeEventListener('scroll', handleScroll)
   }
-  document.removeEventListener('click', handleClickOutside)
 })
 
-function handleClickOutside(e) {
-  // 如果点击的不是搜索区域，关闭下拉
-  if (!e.target.closest('.topbar-right')) {
-    searchResults.value = []
-  }
-}
-
 function handleLogout() {
-  authStore.logout()
-  router.push('/login')
+  ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    authStore.logout()
+    router.push('/login')
+  }).catch(() => {})
 }
 </script>
 
@@ -392,65 +336,6 @@ function handleLogout() {
   position: relative;
 }
 
-/* 搜索下拉 */
-.search-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 320px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  z-index: 1000;
-  margin-top: 8px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.search-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.search-item:hover {
-  background: #f5f7fa;
-}
-
-.search-item:not(:last-child) {
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.search-item .el-icon {
-  color: #3b82f6;
-  font-size: 18px;
-}
-
-.search-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.search-item-name {
-  font-weight: 500;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.search-item-desc {
-  font-size: 12px;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
 .page-content {
   flex: 1;
   overflow-y: auto;
@@ -491,5 +376,37 @@ function handleLogout() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 深色模式 */
+.dark .app-layout {
+  background: #0f172a;
+}
+
+.dark .sidebar-nav .nav-item {
+  color: #94a3b8;
+}
+
+.dark .sidebar-nav .nav-item:hover,
+.dark .sidebar-nav .nav-item.router-link-active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.dark .sidebar-header {
+  border-bottom-color: #334155;
+}
+
+.dark .user-info {
+  color: #94a3b8;
+}
+
+.dark .user-avatar {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.dark .breadcrumb-text {
+  color: #94a3b8;
 }
 </style>

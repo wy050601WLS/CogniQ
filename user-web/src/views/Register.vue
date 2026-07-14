@@ -161,4 +161,25 @@ async function handleRegister() {
 .login-footer a:hover {
   text-decoration: underline;
 }
+
+/* 深色模式 */
+.dark .login-page {
+  background: #0f172a;
+}
+
+.dark .login-card {
+  background: #1e293b;
+}
+
+.dark .login-header h1 {
+  color: #e2e8f0;
+}
+
+.dark .login-header p {
+  color: #94a3b8;
+}
+
+.dark .login-footer {
+  color: #94a3b8;
+}
 </style>

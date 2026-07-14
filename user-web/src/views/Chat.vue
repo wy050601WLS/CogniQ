@@ -655,4 +655,40 @@ function scrollToBottom() {
 .input-container .el-textarea { flex: 1; }
 .input-container :deep(.el-textarea__inner) { background: transparent; border: none; box-shadow: none; padding: 0; }
 .input-hint { margin-top: 8px; font-size: 12px; color: #94a3b8; text-align: center; }
+
+/* 深色模式 */
+.dark .chat-page { background: #0f172a; }
+.dark .chat-sidebar { background: #1e293b; border-right-color: #334155; }
+.dark .sidebar-header { border-bottom-color: #334155; }
+.dark .conv-item.active { background: rgba(59, 130, 246, 0.15); }
+.dark .conv-icon { background: #334155; color: #94a3b8; }
+.dark .conv-title { color: #e2e8f0; }
+.dark .chat-header { border-bottom-color: #334155; }
+.dark .welcome h2 { color: #e2e8f0; }
+.dark .welcome > p { color: #94a3b8; }
+.dark .quick-item { background: #334155; color: #cbd5e1; }
+.dark .quick-item:hover { background: #475569; }
+.dark .message-actions .el-button { color: #94a3b8; }
+.dark .message-actions .el-button:hover { color: #60a5fa; }
+.dark .message-sources { background: #1e293b; border-color: #334155; }
+.dark .sources-title { color: #94a3b8; }
+.dark .source-item { background: #0f172a; }
+.dark .source-content { color: #cbd5e1; }
+.dark .chat-input-area { background: #1e293b; border-top-color: #334155; }
+.dark .input-hint { color: #64748b; }
+.dark .input-container { background: #334155; }
+.dark .message.user .message-text { background: rgba(59, 130, 246, 0.2); }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .message-actions {
+    opacity: 1 !important;
+  }
+  .message-actions .el-button span:not(.el-icon) {
+    display: none;
+  }
+  .chat-sidebar {
+    display: none;
+  }
+}
 </style>
